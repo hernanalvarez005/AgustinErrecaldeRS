@@ -1,0 +1,8 @@
+-- Local seed data.
+--
+-- Phase 0 has no seedable business data yet (organizations/memberships are
+-- created through the onboarding flow, tied to a real auth user). Demo data
+-- for contacts, properties, leads, etc. will be added here starting Phase 1,
+-- generated for a fake org+user created by the auth seed below.
+--
+-- Never put real personal data here (see docs/PRODUCT_SPEC.md, section 50).
