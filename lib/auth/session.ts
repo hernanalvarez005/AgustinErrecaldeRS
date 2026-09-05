@@ -1,5 +1,7 @@
 import "server-only";
 
+import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 
 /** The current authenticated Supabase user, or null if there's no session. */
@@ -70,4 +72,17 @@ export async function getCurrentMembership() {
   }
 
   return { role: membership.role, organization };
+}
+
+/**
+ * Same as getCurrentMembership(), but redirects instead of returning null.
+ * Use this from Server Actions (which render nothing and can't rely on the
+ * (dashboard) layout's guard) that need the current organization.
+ */
+export async function requireMembership() {
+  const membership = await getCurrentMembership();
+  if (!membership) {
+    redirect("/onboarding");
+  }
+  return membership;
 }

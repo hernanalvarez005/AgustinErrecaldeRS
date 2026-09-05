@@ -1,5 +1,53 @@
+import Link from "next/link";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentMembership, getProfile } from "@/lib/auth/session";
+import {
+  listOverdueTasks,
+  listTasksDueToday,
+  type TodayTask,
+} from "@/lib/data/today";
+import { formatDate } from "@/lib/format";
+import { TASK_PRIORITY_LABELS } from "@/lib/validations/task";
+
+function TaskList({
+  tasks,
+  emptyMessage,
+}: {
+  tasks: TodayTask[];
+  emptyMessage: string;
+}) {
+  if (tasks.length === 0) {
+    return <p className="text-muted-foreground text-sm">{emptyMessage}</p>;
+  }
+  return (
+    <ul className="space-y-2">
+      {tasks.map((task) => (
+        <li key={task.id} className="text-sm">
+          <Link
+            href={task.contact ? `/contacts/${task.contact.id}` : "#"}
+            className="font-medium hover:underline"
+          >
+            {task.title}
+          </Link>
+          <span className="text-muted-foreground">
+            {" "}
+            ·{" "}
+            {
+              TASK_PRIORITY_LABELS[
+                task.priority as keyof typeof TASK_PRIORITY_LABELS
+              ]
+            }
+            {task.contact
+              ? ` · ${task.contact.first_name} ${task.contact.last_name}`
+              : ""}
+            {task.due_at ? ` · ${formatDate(task.due_at)}` : ""}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default async function TodayPage() {
   const [profile, membership] = await Promise.all([
@@ -7,6 +55,14 @@ export default async function TodayPage() {
     getCurrentMembership(),
   ]);
   const firstName = profile?.first_name || "de nuevo";
+  const organizationId = membership?.organization.id;
+
+  const [tasksToday, overdueTasks] = organizationId
+    ? await Promise.all([
+        listTasksDueToday(organizationId),
+        listOverdueTasks(organizationId),
+      ])
+    : [[], []];
 
   return (
     <div className="space-y-6">
@@ -41,8 +97,8 @@ export default async function TodayPage() {
               Tareas para hoy
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-muted-foreground text-sm">
-            Todavía no hay tareas. Se implementan en la Fase 1.
+          <CardContent>
+            <TaskList tasks={tasksToday} emptyMessage="Sin tareas para hoy." />
           </CardContent>
         </Card>
         <Card>
@@ -51,8 +107,11 @@ export default async function TodayPage() {
               Seguimientos vencidos
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-muted-foreground text-sm">
-            Sin datos todavía.
+          <CardContent>
+            <TaskList
+              tasks={overdueTasks}
+              emptyMessage="Sin seguimientos vencidos."
+            />
           </CardContent>
         </Card>
         <Card>

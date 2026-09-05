@@ -69,49 +69,86 @@ p_main_area, p_first_name, p_last_name, p_phone) returns uuid` — SECURITY
   completa su profile. Única vía de escritura a `organizations`/`memberships`.
 - `public.set_updated_at()` — trigger reutilizable para `updated_at`.
 
-## Planificado (Fase 1 en adelante)
+## Implementado (Fase 1)
 
-Esquema propuesto para el resto del dominio. Se implementa incrementalmente,
-una migración por fase (ver docs/ROADMAP.md), no todo de una vez.
-
-### `contacts` (Fase 1)
+### `contacts`
 
 `id, organization_id, first_name, last_name, phone, whatsapp, email, dni,
-birth_date, address, profession, notes, source_id, archived_at, created_at,
+birth_date, address, profession, source, archived_at, created_at,
 updated_at, created_by`. Índices sobre `organization_id`, `phone`, `email`,
 `dni` (para detección de duplicados, sección 66 del brief). DNI no se expone
 en listados por defecto — solo en la ficha individual.
 
-### `contact_roles` (Fase 1)
+Dos decisiones que se apartan del listado literal del brief, documentadas
+acá porque no son obvias leyendo el código:
+
+- **`source` es `text` + `check`, no `source_id` a una tabla de lookup.**
+  Es el mismo patrón "enum-like" usado en el resto del esquema, y evita una
+  tabla de 11 filas fijas para algo que cambia rarísima vez.
+- **No hay columna `notes` en `contacts`.** El brief la lista, pero ya existe
+  la tabla `notes` (con `contact_id`) para exactamente ese propósito, con
+  timestamp y autoría — tener las dos sería el mismo dato en dos lugares sin
+  que quede claro cuál mirar. Se usa solo la tabla.
+
+### `contact_roles`
 
 `id, contact_id fk, role text check in ('buyer','seller','owner','investor',
-'tenant','landlord','referrer','past_client','other'), created_at`. Un
-contacto puede tener N roles simultáneos — por eso es tabla aparte y no una
-columna rígida `client_type` en `contacts`.
+'tenant','landlord','referrer','past_client','other'), created_at`, con
+`unique (contact_id, role)`. Un contacto puede tener N roles simultáneos —
+por eso es tabla aparte y no una columna rígida `client_type` en `contacts`.
+No tiene `organization_id` propio (es un junction 1:N estrictamente atado a
+`contacts`); su RLS revalida pertenencia vía `EXISTS` contra `contacts`.
 
-### `notes` (Fase 1)
+### `notes`
 
-`id, organization_id, body, contact_id, property_id, deal_id, search_id,
-acquisition_id, lead_id, created_by, created_at, updated_at`. Todos los FK de
-contexto son nullable — una nota se ata a lo que corresponda.
+`id, organization_id, body, contact_id, created_by, created_at, updated_at`.
+Fase 1 solo agrega `contact_id` — `property_id`/`deal_id`/`search_id`/
+`acquisition_id`/`lead_id` se agregan como columnas nullable en la migración
+de la fase que introduce cada una de esas tablas (nunca modificando esta
+migración ya aplicada).
 
-### `tasks` (Fase 1)
+### `tasks`
 
-`id, organization_id, title, description, contact_id, property_id, deal_id,
-search_id, acquisition_id, lead_id, priority text check in ('low','medium',
-'high','urgent'), due_at, status text check in ('pending','in_progress',
-'completed','cancelled'), assigned_to, completed_at, created_at, updated_at`.
-Índice sobre `due_at`, `status`, `organization_id`.
+`id, organization_id, title, description, contact_id, priority text check in
+('low','medium','high','urgent'), due_at, status text check in ('pending',
+'in_progress','completed','cancelled'), assigned_to, completed_at,
+created_at, updated_at, created_by`. Índices sobre `due_at`, `status`,
+`organization_id`, `contact_id`. Mismo criterio que `notes` sobre los FK de
+contexto todavía no agregados.
 
-### `activities` (Fase 1)
+### `activities`
 
 `id, organization_id, type text check in ('call','whatsapp','email',
 'meeting','virtual_meeting','property_visit','acquisition_visit','valuation',
 'notary_meeting','reservation','contract_signing','closing','follow_up',
-'other'), title, description, contact_id, property_id, deal_id, search_id,
-acquisition_id, lead_id, starts_at, ends_at check (starts_at <= ends_at),
-status, location, meeting_url, google_event_id, created_by, created_at,
-updated_at`. Base de los timelines (contacto/propiedad/operación).
+'other'), title, description, contact_id, starts_at, ends_at check (ends_at
+is null or starts_at <= ends_at), status text check in ('scheduled',
+'completed','cancelled'), location, meeting_url, google_event_id,
+created_by, created_at, updated_at`. Base de los timelines.
+
+### `contact_overview` (vista)
+
+`security_invoker` view sobre `contacts` que precalcula `roles` (array
+agregado desde `contact_roles`), `last_interaction_at` (última `activity`
+completada) y `next_action_at` (`due_at` más próximo entre las tareas
+pendientes) en una sola query — así el listado de contactos no hace una
+consulta por fila para mostrar esos dos datos. `security_invoker = true`
+significa que corre con los permisos de quien consulta, así que el RLS de
+`contacts`/`contact_roles`/`activities`/`tasks` se sigue aplicando a través
+de la vista; no es un bypass.
+
+### RLS de Fase 1
+
+Simplificado a propósito: cualquier miembro de la organización puede
+leer/escribir sus contactos/notas/tareas/actividades — sin restricción por
+fila (p. ej. "solo quien creó la tarea puede completarla"). Tiene sentido
+mientras haya un solo asesor por organización; se ajusta cuando haya
+equipos reales que lo necesiten (ver docs/ARCHITECTURE.md).
+
+## Planificado (Fase 2 en adelante)
+
+Esquema propuesto para el resto del dominio. Se implementa incrementalmente,
+una migración por fase (ver docs/ROADMAP.md), no todo de una vez.
 
 ### `properties` (Fase 2)
 

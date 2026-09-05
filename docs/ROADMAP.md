@@ -19,15 +19,24 @@ verde, y un commit prolijo.
 - `docs/PRODUCT_SPEC.md`, `docs/ARCHITECTURE.md`, `docs/DATABASE.md`,
   `docs/ROADMAP.md`.
 
-## Fase 1 — CRM Core
+## Fase 1 — CRM Core ✅
 
-- Tablas: `contacts`, `contact_roles`, `notes`, `tasks`, `activities` (+RLS).
-- Ficha de contacto: datos, roles, notas, tareas, timeline básico.
-- Acciones rápidas desde la ficha (agregar nota, crear tarea, registrar
-  llamada).
-- Detección de posibles duplicados por teléfono/email/DNI antes de crear un
-  contacto.
-- Primeros tests: validaciones Zod, RLS de `contacts`.
+- Tablas: `contacts`, `contact_roles`, `notes`, `tasks`, `activities` (+RLS),
+  vista `contact_overview` para el listado sin N+1.
+- `/contacts`: buscador (nombre/teléfono/email) + filtro por rol.
+- `/contacts/new` y `/contacts/[id]/edit`: mismo formulario, con detección de
+  posibles duplicados por teléfono/email/DNI antes de guardar (no bloquea,
+  avisa).
+- `/contacts/[id]`: header con roles y accesos directos (llamar, WhatsApp,
+  email), última interacción/próxima acción a la vista, tareas pendientes
+  con alta y completado rápido, notas, registro de actividad (llamada,
+  WhatsApp, email, reunión, visita, otro) y timeline unificado.
+- "Hoy" ahora muestra tareas reales del día y seguimientos vencidos
+  (agenda y alertas comerciales siguen pendientes de Fases 8/3+).
+
+Pendiente de esta fase, movido a después: tests automatizados (unit/RLS) —
+no bloquearon el MVP funcional pero quedan como deuda a pagar antes de sumar
+más superficie (ver docs/ARCHITECTURE.md).
 
 ## Fase 2 — Propiedades
 

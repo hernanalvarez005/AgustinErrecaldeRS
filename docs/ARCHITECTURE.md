@@ -125,5 +125,15 @@ start` con Docker). A partir de ahí, `npm run db:types` lo regenera y deja
 getCurrentMembership()` hace `.limit(1)`). El esquema soporta N
   organizaciones por usuario desde ya; el día que haga falta, ese helper es
   el único lugar que hay que tocar para dejar de asumirlo.
-- **Sin tests automatizados todavía** (Fase 0 no los requiere). Se agregan a
-  partir de la Fase 1 sobre flujos críticos (ver docs/ROADMAP.md).
+- **Sin tests automatizados todavía.** Ni Fase 0 ni Fase 1 los tienen — se
+  priorizó tener el flujo de punta a punta (auth → onboarding → contactos →
+  tareas/notas/actividades → Hoy) funcionando y verificado a mano contra un
+  proyecto Supabase real antes de invertir en test harness. Se agregan antes
+  de sumar más superficie (Fase 2), sobre todo RLS de `contacts` y el
+  cálculo de `contact_overview`, que son los que más cuesta detectar a
+  simple vista si se rompen.
+- **RLS de Fase 1 sin restricción por fila.** Cualquier miembro de la
+  organización puede editar/completar cualquier tarea o nota, no solo la
+  propia. Correcto para un asesor solo; el día que haya varios asesores en
+  una organización esto necesita revisarse (asignación, permisos por rol)
+  antes de ofrecerlo como feature de equipo.
