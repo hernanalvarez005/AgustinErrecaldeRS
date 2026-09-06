@@ -230,10 +230,40 @@ criterio que Fases 1-7); sincronización con Google Calendar (Fase 9).
 Pendiente de esta fase, movido a después: tests automatizados (mismo
 criterio que Fases 1-8); Calendar → CRM (sincronización bidireccional).
 
-## Fase 10 — Dashboard
+## Fase 10 — Dashboard ✅
 
-- KPIs accionables (leads, visitas, ofertas, reservas, cierres, comisiones)
-  y embudos de comprador/captación, por período.
+- `/dashboard` (reemplaza el placeholder de Fase 0): 4 KPIs (leads nuevos,
+  leads convertidos, visitas, cierres + comisión por moneda) y 3 embudos
+  (captaciones, compradores, operaciones) por período, con selector de 5
+  períodos (este mes/mes pasado/último trimestre/este año/todo) via
+  `?period=` — server-rendered, sin estado de cliente.
+  Sin migración esta fase: solo lecturas nuevas (`lib/data/dashboard.ts`)
+  sobre tablas ya existentes.
+- Los embudos son "cohortes por fecha de creación": filtran
+  captaciones/búsquedas/operaciones cuyo `created_at` cae en el período
+  elegido y las agrupan por su etapa ACTUAL — no un historial real de en
+  qué etapa estuvo cada una en cada momento del período (el esquema no
+  lleva ese registro todavía; ver docs/DATABASE.md). Es la métrica más
+  honesta que se puede construir con los datos disponibles, y se lo
+  advierte explícitamente en la propia página.
+- Los KPIs con fecha inequívoca (`leads.created_at`/`converted_at`,
+  `activities.starts_at`, `deals.closing_date`) se filtran directamente
+  por esa columna en vez de por cohorte.
+- Nuevo `lib/date.ts:getPeriodYmdRange` centraliza el cálculo de rango
+  "YYYY-MM-DD" por período en la zona horaria de negocio — reutilizado
+  para todos los KPIs y embudos.
+- Sin librería de gráficos: barras horizontales con CSS puro
+  (`components/dashboard/funnel-bars.tsx`), mismo criterio que los
+  tableros Kanban (evitar dependencias innecesarias).
+- Verificado end-to-end contra el proyecto Supabase real: datos de prueba
+  cubriendo los 6 tipos de entidad, números de KPIs/embudos confirmados
+  exactos, cambio de período confirmado (mes pasado da todo en cero cuando
+  los datos son de este mes), sin errores de consola ni de servidor. Sin
+  bugs reales encontrados esta fase.
+
+Pendiente de esta fase, movido a después: tests automatizados (mismo
+criterio que Fases 1-9); un embudo con historial real de transiciones de
+estado requeriría una tabla de auditoría que no existe todavía.
 
 ## Fase 11 — Matching
 

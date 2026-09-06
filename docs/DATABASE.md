@@ -442,6 +442,38 @@ mostrar datos reales.
   zona horaria) y un instante UTC correcto — ver el gotcha nuevo en
   docs/ARCHITECTURE.md.
 
+## Fase 10 — sin migración
+
+`/dashboard` no agrega tablas ni columnas — es una capa de consultas nueva
+(`lib/data/dashboard.ts`) sobre `leads`/`activities`/`deals`/
+`property_acquisitions`/`property_searches`, todas ya existentes.
+
+- Los embudos (`getAcquisitionFunnel`/`getSearchFunnel`/`getDealFunnel`)
+  son "cohortes por fecha de creación": no hay ninguna tabla de historial
+  de transiciones de estado en el esquema, así que la única forma honesta
+  de armar un embudo por período es filtrar las filas cuyo `created_at`
+  cae en el período elegido y agruparlas por su `status` ACTUAL — no por
+  la etapa en la que estaban en cada momento del período. Es una
+  aproximación deliberada, documentada en la propia página
+  (`app/(dashboard)/dashboard/page.tsx`): un embudo con historial real
+  requeriría una tabla de auditoría de cambios de estado, que queda fuera
+  de alcance hasta que haga falta.
+- Los KPIs con fecha inequívoca no pasan por cohorte: `leads` usa
+  `created_at` (nuevos) y `converted_at` (convertidos) directamente;
+  `activities` usa `starts_at` para contar visitas; `deals` usa
+  `closing_date` para cierres y comisión — cada uno filtrado por la
+  columna que efectivamente representa ese evento, no por cuándo se creó
+  el registro.
+- `deals.closing_date` es un `date` nativo de Postgres, no un
+  `timestamptz`: se compara directamente contra strings "YYYY-MM-DD"
+  (`lib/date.ts:getPeriodYmdRange`), sin necesidad de convertir a límites
+  UTC como sí hace falta para `created_at`/`starts_at` (ver
+  `getBusinessRangeBoundsUtc` en docs/ARCHITECTURE.md).
+- Cada consulta de embudo trae como máximo 2000 filas (`FUNNEL_ROW_LIMIT`
+  en `lib/data/dashboard.ts`) y agrupa en memoria — de sobra para el
+  volumen de un solo asesor, y evita una consulta de agregación por cada
+  una de las ~9 etapas posibles de cada pipeline.
+
 ## Implementado (Fase 9)
 
 ### `google_calendar_connections`

@@ -1,11 +1,159 @@
-import { ComingSoon } from "@/components/shared/coming-soon";
+import Link from "next/link";
 
-export default function DashboardKpiPage() {
+import { FunnelBars } from "@/components/dashboard/funnel-bars";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireMembership } from "@/lib/auth/session";
+import {
+  getAcquisitionFunnel,
+  getClosingsKpi,
+  getDealFunnel,
+  getLeadsKpi,
+  getSearchFunnel,
+  getVisitsKpi,
+} from "@/lib/data/dashboard";
+import { DASHBOARD_PERIOD_LABELS, type DashboardPeriod } from "@/lib/date";
+
+const DASHBOARD_PERIODS: DashboardPeriod[] = [
+  "this_month",
+  "last_month",
+  "quarter",
+  "year",
+  "all",
+];
+
+function formatCommission(
+  commissionByCurrency: Partial<Record<"ARS" | "USD", number>>,
+) {
+  const entries = Object.entries(commissionByCurrency) as [
+    "ARS" | "USD",
+    number,
+  ][];
+  if (entries.length === 0) return "—";
+  return entries
+    .map(([currency, value]) => `${currency} ${value.toLocaleString("es-AR")}`)
+    .join(" · ");
+}
+
+export default async function DashboardKpiPage({
+  searchParams,
+}: PageProps<"/dashboard">) {
+  const params = await searchParams;
+  const period: DashboardPeriod = DASHBOARD_PERIODS.includes(
+    params.period as DashboardPeriod,
+  )
+    ? (params.period as DashboardPeriod)
+    : "this_month";
+
+  const membership = await requireMembership();
+  const organizationId = membership.organization.id;
+
+  const [leads, visits, closings, acquisitionFunnel, searchFunnel, dealFunnel] =
+    await Promise.all([
+      getLeadsKpi(organizationId, period),
+      getVisitsKpi(organizationId, period),
+      getClosingsKpi(organizationId, period),
+      getAcquisitionFunnel(organizationId, period),
+      getSearchFunnel(organizationId, period),
+      getDealFunnel(organizationId, period),
+    ]);
+
   return (
-    <ComingSoon
-      title="Dashboard"
-      phase="la Fase 10"
-      description="KPIs comerciales accionables: leads, visitas, ofertas, reservas, cierres y comisiones estimadas."
-    />
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+        <div className="flex gap-1 rounded-lg border p-1">
+          {DASHBOARD_PERIODS.map((p) => (
+            <Link
+              key={p}
+              href={`/dashboard?period=${p}`}
+              className={`rounded-md px-2.5 py-1 text-sm ${
+                p === period
+                  ? "bg-foreground text-background"
+                  : "hover:bg-muted"
+              }`}
+            >
+              {DASHBOARD_PERIOD_LABELS[p]}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-muted-foreground text-sm font-medium">
+              Leads nuevos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            {leads.newLeads}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-muted-foreground text-sm font-medium">
+              Leads convertidos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            {leads.converted}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-muted-foreground text-sm font-medium">
+              Visitas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">{visits}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-muted-foreground text-sm font-medium">
+              Cierres
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-semibold">{closings.count}</p>
+            <p className="text-muted-foreground text-sm">
+              Comisión: {formatCommission(closings.commissionByCurrency)}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Embudo de captaciones</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FunnelBars stages={acquisitionFunnel} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Embudo de compradores</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FunnelBars stages={searchFunnel} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Embudo de operaciones</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FunnelBars stages={dealFunnel} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <p className="text-muted-foreground text-xs">
+        Los embudos cuentan las oportunidades abiertas en el período elegido,
+        según su etapa actual — no un historial de en qué etapa estuvo cada una
+        en cada momento (el esquema no lleva ese registro todavía).
+      </p>
+    </div>
   );
 }

@@ -135,6 +135,72 @@ export function getBusinessRangeBoundsUtc(
   return { startUtc: start.toISOString(), endUtc: end.toISOString() };
 }
 
+export type DashboardPeriod =
+  "this_month" | "last_month" | "quarter" | "year" | "all";
+
+export const DASHBOARD_PERIOD_LABELS: Record<DashboardPeriod, string> = {
+  this_month: "Este mes",
+  last_month: "Mes pasado",
+  quarter: "Último trimestre",
+  year: "Este año",
+  all: "Todo",
+};
+
+/**
+ * The "YYYY-MM-DD" range for a dashboard period, in the business timezone.
+ * `startYmd: null` means no lower bound (period "all"). Callers convert
+ * this into UTC bounds with `getBusinessRangeBoundsUtc` for real
+ * timestamps (`created_at`/`starts_at`), or compare `startYmd`/
+ * `endYmdExclusive` directly for native `date` columns like
+ * `deals.closing_date` — those need no UTC conversion at all, since
+ * Postgres `date` values compare fine against a plain "YYYY-MM-DD" string.
+ */
+export function getPeriodYmdRange(period: DashboardPeriod): {
+  startYmd: string | null;
+  endYmdExclusive: string;
+} {
+  const today = todayYmdInBusinessTimezone();
+  const [year, month] = today.split("-").map(Number);
+  const endYmdExclusive = addDaysToYmd(today, 1); // through today, inclusive
+
+  function firstOfMonth(y: number, m: number): string {
+    return `${y}-${String(m).padStart(2, "0")}-01`;
+  }
+  function addMonths(y: number, m: number, delta: number): [number, number] {
+    let ny = y;
+    let nm = m + delta;
+    while (nm < 1) {
+      nm += 12;
+      ny -= 1;
+    }
+    while (nm > 12) {
+      nm -= 12;
+      ny += 1;
+    }
+    return [ny, nm];
+  }
+
+  switch (period) {
+    case "all":
+      return { startYmd: null, endYmdExclusive };
+    case "this_month":
+      return { startYmd: firstOfMonth(year, month), endYmdExclusive };
+    case "last_month": {
+      const [ly, lm] = addMonths(year, month, -1);
+      return {
+        startYmd: firstOfMonth(ly, lm),
+        endYmdExclusive: firstOfMonth(year, month),
+      };
+    }
+    case "quarter": {
+      const [qy, qm] = addMonths(year, month, -2); // last 3 months, current included
+      return { startYmd: firstOfMonth(qy, qm), endYmdExclusive };
+    }
+    case "year":
+      return { startYmd: `${year}-01-01`, endYmdExclusive };
+  }
+}
+
 /**
  * Converts a `<input type="datetime-local">` value (e.g. "2026-09-10T15:30",
  * with no timezone info) into a correct UTC ISO instant — treating it as
