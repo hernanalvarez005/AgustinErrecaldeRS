@@ -195,8 +195,16 @@ export default async function ContactDetailPage({
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm">Registrar actividad</CardTitle>
+          <Button
+            render={<Link href={`/calendar/new?contactId=${contact.id}`} />}
+            nativeButton={false}
+            variant="ghost"
+            size="sm"
+          >
+            + Agendar
+          </Button>
         </CardHeader>
         <CardContent>
           <form

@@ -61,6 +61,39 @@ export async function listDeals(organizationId: string) {
   }));
 }
 
+/** Every deal in the org, with the property title resolved (deals have no title of their own) — for pickers like the calendar event form. */
+export async function listDealOptions(organizationId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("deals")
+    .select("id, property_id")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to list deals for picker:", error.message);
+    return [];
+  }
+  if (data.length === 0) return [];
+
+  const propertyIds = [...new Set(data.map((d) => d.property_id))];
+  const { data: properties, error: propertiesError } = await supabase
+    .from("properties")
+    .select("id, title")
+    .in("id", propertyIds);
+  if (propertiesError)
+    console.error(
+      "Failed to load properties for deal picker:",
+      propertiesError.message,
+    );
+
+  const titleById = new Map((properties ?? []).map((p) => [p.id, p.title]));
+  return data.map((d) => ({
+    id: d.id,
+    title: titleById.get(d.property_id) ?? "Operación",
+  }));
+}
+
 export async function getDeal(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase

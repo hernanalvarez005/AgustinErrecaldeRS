@@ -412,13 +412,35 @@ Dos piezas nuevas de infraestructura, ninguna de esquema:
 - `lib/date.ts`: calcula los límites de "hoy" en la zona horaria del
   negocio (Argentina) en vez de la zona implícita del proceso — ver el
   gotcha en docs/ARCHITECTURE.md.
-- El resolver de `lib/data/today.ts` (`resolveEngagementLinks`): dado que
-  `tasks`/`activities` pueden estar atadas a cualquiera de los seis tipos
-  de entidad (contacto/propiedad/captación/búsqueda/lead/operación),
-  resuelve el link + label correcto para cada uno en lotes (mismo
-  criterio "evitar N+1" que `lib/data/acquisitions.ts`/`lib/data/deals.ts`),
-  en vez de asumir que solo hay `contact_id` como hacía el código de
-  Fase 0.
+- El resolver de entidades (`resolveEngagementLinks`, extraído en Fase 8 a
+  `lib/data/engagement-links.ts` porque `/calendar` también lo necesita):
+  dado que `tasks`/`activities` pueden estar atadas a cualquiera de los
+  seis tipos de entidad (contacto/propiedad/captación/búsqueda/lead/
+  operación), resuelve el link + label correcto para cada uno en lotes
+  (mismo criterio "evitar N+1" que `lib/data/acquisitions.ts`/
+  `lib/data/deals.ts`), en vez de asumir que solo hay `contact_id` como
+  hacía el código de Fase 0.
+
+## Fase 8 — sin migración
+
+`/calendar` reutiliza `activities` (Fase 1) tal cual — sin tablas ni
+columnas nuevas. Hasta esta fase, la única forma de crear una fila en
+`activities` era el registro rápido (`logActivity`, Fase 1), que siempre
+inserta `status: 'completed'` y `starts_at: now()` — no existía ningún
+camino para agendar algo a futuro (`status: 'scheduled'`). `/calendar/new`
+es la primera pantalla que inserta actividades `scheduled`, lo que a su
+vez es lo que hace que "Agenda de hoy" en `/today` (Fase 7) empiece a
+mostrar datos reales.
+
+`lib/date.ts` se extiende con:
+
+- Aritmética de grilla de calendario (`getMonthGridYmds`, `getWeekYmds`,
+  `addDaysToYmd`, ...), toda en UTC puro (ver el comentario del archivo
+  sobre por qué no se usa `date-fns` para esto pese a estar instalado).
+- `businessDateTimeToUtcIso`/`utcIsoToBusinessDateTimeLocal`: conversión
+  de ida y vuelta entre un `<input type="datetime-local">` (que no lleva
+  zona horaria) y un instante UTC correcto — ver el gotcha nuevo en
+  docs/ARCHITECTURE.md.
 
 ## Índices previstos (más allá de las PK/FK)
 

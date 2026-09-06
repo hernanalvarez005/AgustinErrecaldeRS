@@ -175,10 +175,36 @@ criterio que Fases 1-5).
 Pendiente de esta fase, movido a después: tests automatizados (mismo
 criterio que Fases 1-6).
 
-## Fase 8 — Agenda
+## Fase 8 — Agenda ✅
 
-- Calendario interno (mensual/semanal/diario), creación/edición de
-  actividades desde contacto/propiedad/operación.
+- `/calendar`: vistas mensual/semanal/diaria (todas server-rendered, sin
+  drag-and-drop — reprogramar es editar la fecha del formulario), todas
+  navegables entre sí y con anterior/siguiente/hoy. Reutiliza la tabla
+  `activities` que ya existía desde Fase 1 — sin migración esta fase.
+- `/calendar/new` y `/calendar/[id]/edit`: creación/edición de eventos con
+  tipo, inicio/fin, ubicación, link de reunión, estado, y vínculo opcional
+  a contacto/propiedad/operación (los tres que pide el spec). Cierra un
+  hueco real: hasta esta fase no existía ninguna forma de crear una
+  `activity` con `status='scheduled'` — el registro rápido
+  (`logActivity`) siempre crea actividades ya `completed`. "Agenda de
+  hoy" en `/today` (Fase 7) pasa de estar siempre vacía a mostrar datos
+  reales.
+- "+ Agendar" agregado a las fichas de contacto/propiedad/operación,
+  linkeando a `/calendar/new?contactId=/propertyId=/dealId=`.
+- Nuevo `lib/date.ts` extendido con aritmética de grilla de calendario
+  (mes/semana) y con la conversión de ida y vuelta entre un
+  `<input type="datetime-local">` y un instante UTC correcto — ver el
+  gotcha nuevo en docs/ARCHITECTURE.md (fechas-hora sin zona se parsean
+  distinto que fechas solas).
+- De paso, dos bugs cosméticos reales encontrados y corregidos: el saludo
+  de `/today` calculaba el día de la semana con la zona horaria implícita
+  del proceso (mismo patrón que los gotchas de Fases 4/7, ahora
+  centralizado); y `text-transform: capitalize` en CSS mayusculiza cada
+  palabra, rompiendo "6 de septiembre" → "6 De Septiembre" — corregido
+  mayusculizando solo la primera letra en JS.
+
+Pendiente de esta fase, movido a después: tests automatizados (mismo
+criterio que Fases 1-7); sincronización con Google Calendar (Fase 9).
 
 ## Fase 9 — Google Calendar
 

@@ -319,14 +319,47 @@ que `formatDate`/`formatEventDay`:
 - `getDateOnlyTodayBoundsUtc()` — para comparar contra `due_at` (fechas
   sin hora, ancladas a medianoche UTC): límites en medianoche UTC del
   día de hoy en Argentina.
-- `getBusinessTodayBoundsUtc()` — para comparar contra timestamps reales
-  (`activities.starts_at`): límites en medianoche de Argentina (00:00
-  ART), expresados en UTC.
+- `getBusinessDayBoundsUtc()`/`getBusinessRangeBoundsUtc()` — para
+  comparar contra timestamps reales (`activities.starts_at`): límites en
+  medianoche de Argentina (00:00 ART), expresados en UTC. (Se llamaba
+  `getBusinessTodayBoundsUtc()` en Fase 7; generalizada en Fase 8 para
+  aceptar cualquier día/rango, no solo "hoy", que es lo que necesita el
+  calendario.)
 
 Verificado en vivo creando una tarea con vencimiento hoy y otra vencida
 hace dos días: cada una aparece en la sección correcta de `/today`.
 
 Regla para cualquier código futuro que necesite "qué es hoy" en el
-servidor (Fase 8, agenda, va a necesitar esto todo el tiempo): nunca
-`new Date().getFullYear()/getMonth()/getDate()` — siempre
+servidor: nunca `new Date().getFullYear()/getMonth()/getDate()` — siempre
 `lib/date.ts`.
+
+## Gotcha verificado: escribir un `<input type="datetime-local">` con la zona horaria equivocada
+
+Encontrado construyendo `/calendar/new` (Fase 8), antes de que llegara a
+producción: una fecha-hora sin zona sigue una regla de parseo
+**opuesta** a la de una fecha sola. `new Date("2026-09-10")` es UTC (ver
+el gotcha de fechas más arriba), pero `new Date("2026-09-10T15:30")` —
+exactamente el valor que entrega un `<input type="datetime-local">` — es
+**hora local**, según el spec de ECMAScript. Pasar ese valor directo a
+`new Date(...).toISOString()` en el servidor habría guardado el instante
+equivocado en cualquier máquina/entorno que no esté en la zona de
+Argentina — la contracara, del lado de escritura, del gotcha de
+`formatDate` (que es del lado de lectura).
+
+Fix: `businessDateTimeToUtcIso()` en `lib/date.ts` nunca usa
+`new Date(datetimeLocal)` sobre el valor crudo — arma el instante UTC a
+mano a partir de los componentes de fecha/hora, tratando el string como
+hora de pared en Argentina, y le suma el offset fijo (+3h) para llegar a
+UTC. La inversa, `utcIsoToBusinessDateTimeLocal()` (para precargar el
+formulario de edición), sí puede usar `Intl.DateTimeFormat` de forma
+segura, porque ahí se parte de un instante ya correcto — solo hay que
+reformatearlo en la zona del negocio, no inventar uno nuevo.
+
+Verificado en vivo: evento agendado a las 09:00 (hora Argentina) se
+guardó como `2026-09-10T12:00:00+00:00` (UTC) y se volvió a mostrar como
+"09:00" tanto en el formulario de edición como en las vistas de
+mes/semana/día — sin corrimiento en ninguna dirección.
+
+Regla para cualquier código futuro que lea un `datetime-local` (o
+cualquier fecha-hora sin zona explícita) del lado del servidor: nunca
+`new Date(valorCrudo)` — siempre `lib/date.ts`.
