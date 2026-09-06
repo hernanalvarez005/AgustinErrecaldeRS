@@ -289,3 +289,44 @@ Aplica a cualquier formulario futuro que edite datos y se quede en la
 misma ruta (server action sin `redirect`, solo `revalidatePath`) con
 inputs no controlados que arrancan vacíos — no a los que redirigen a otra
 página al guardar (esos sí remontan solos, por el cambio de ruta).
+
+## Gotcha verificado: "hoy" calculado con la zona horaria equivocada
+
+Encontrado planificando Fase 7 (`/today`), antes de tocar nada:
+`lib/data/today.ts` calculaba los límites de "hoy"/"vencido" así:
+
+```ts
+const now = new Date();
+const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+```
+
+Mismo bug de fondo que el de fechas de Fase 4, pero en una **consulta**
+en vez de en un `format`: `now.getFullYear()/getMonth()/getDate()`
+devuelven la fecha en la zona horaria **implícita del proceso** (la
+máquina de desarrollo, o UTC en Vercel), no en la del negocio
+(Argentina). Un `due_at` guardado como medianoche UTC para el día X (ver
+el gotcha de fechas más arriba) se comparaba entonces contra "medianoche
+local del servidor", que no coincide con medianoche UTC salvo que el
+servidor esté en UTC — así que una tarea con vencimiento "hoy" podía
+aparecer en "Seguimientos vencidos" o directamente no aparecer en ningún
+lado, según en qué máquina/entorno corriera, sin ningún error visible.
+
+Fix: `lib/date.ts` centraliza el cálculo de "hoy" a partir de la zona del
+negocio (`America/Argentina/Buenos_Aires`) vía `Intl.DateTimeFormat`,
+nunca de `new Date().getFullYear()/...`. Dos variantes, mismo criterio
+que `formatDate`/`formatEventDay`:
+
+- `getDateOnlyTodayBoundsUtc()` — para comparar contra `due_at` (fechas
+  sin hora, ancladas a medianoche UTC): límites en medianoche UTC del
+  día de hoy en Argentina.
+- `getBusinessTodayBoundsUtc()` — para comparar contra timestamps reales
+  (`activities.starts_at`): límites en medianoche de Argentina (00:00
+  ART), expresados en UTC.
+
+Verificado en vivo creando una tarea con vencimiento hoy y otra vencida
+hace dos días: cada una aparece en la sección correcta de `/today`.
+
+Regla para cualquier código futuro que necesite "qué es hoy" en el
+servidor (Fase 8, agenda, va a necesitar esto todo el tiempo): nunca
+`new Date().getFullYear()/getMonth()/getDate()` — siempre
+`lib/date.ts`.

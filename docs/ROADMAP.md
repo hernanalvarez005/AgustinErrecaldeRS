@@ -150,11 +150,30 @@ next_action_at` era una columna que nada escribía nunca — "Próxima
 Pendiente de esta fase, movido a después: tests automatizados (mismo
 criterio que Fases 1-5).
 
-## Fase 7 — Hoy
+## Fase 7 — Hoy ✅
 
-- Pantalla "Hoy" completa: agenda del día, tareas, seguimientos vencidos,
-  alertas comerciales (todas clickeables). Se convierte en el centro real
-  del CRM una vez que Fases 1–6 alimentan datos reales.
+- `/today` completo: agenda del día (actividades `scheduled` de hoy —
+  queda vacío hasta que la Fase 8 agregue una forma de agendarlas),
+  tareas para hoy, seguimientos vencidos, alertas comerciales — las
+  cuatro secciones con datos reales de Fases 1-6 y **todo clickeable**.
+- Resolución de link genérica (`lib/data/today.ts`): una tarea o
+  actividad puede estar atada a contacto/propiedad/captación/búsqueda/
+  lead/operación — antes solo se resolvía el link cuando había
+  `contact_id`; cualquier tarea de las Fases 2-6 quedaba con un link
+  muerto (`href="#"`). Corregido con un resolver que cubre los seis
+  casos, con label específico para cada uno.
+- Alertas comerciales reales: cuenta búsquedas/captaciones/operaciones
+  activas sin próxima acción (regla de negocio 5 del spec), cada una
+  clickeable a su listado.
+- **Bug real corregido:** los límites de "hoy" se calculaban con
+  `new Date()` en la zona horaria implícita del proceso — mismo patrón
+  de bug que el de fechas de Fase 4, pero en una consulta en vez de en
+  un `format`. Nuevo `lib/date.ts` centraliza el cálculo de "hoy" en la
+  zona horaria del negocio (Argentina), independiente de la zona del
+  servidor. Ver docs/ARCHITECTURE.md.
+
+Pendiente de esta fase, movido a después: tests automatizados (mismo
+criterio que Fases 1-6).
 
 ## Fase 8 — Agenda
 

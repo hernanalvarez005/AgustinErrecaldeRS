@@ -3,12 +3,31 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentMembership, getProfile } from "@/lib/auth/session";
 import {
+  listCommercialAlerts,
   listOverdueTasks,
   listTasksDueToday,
+  listTodayActivities,
+  type TodayActivity,
   type TodayTask,
 } from "@/lib/data/today";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
+import { ACTIVITY_TYPE_LABELS } from "@/lib/validations/activity";
 import { TASK_PRIORITY_LABELS } from "@/lib/validations/task";
+
+function LinkOrPlain({
+  link,
+  children,
+}: {
+  link: { href: string; label: string } | null;
+  children: React.ReactNode;
+}) {
+  if (!link) return <span className="font-medium">{children}</span>;
+  return (
+    <Link href={link.href} className="font-medium hover:underline">
+      {children}
+    </Link>
+  );
+}
 
 function TaskList({
   tasks,
@@ -24,12 +43,7 @@ function TaskList({
     <ul className="space-y-2">
       {tasks.map((task) => (
         <li key={task.id} className="text-sm">
-          <Link
-            href={task.contact ? `/contacts/${task.contact.id}` : "#"}
-            className="font-medium hover:underline"
-          >
-            {task.title}
-          </Link>
+          <LinkOrPlain link={task.link}>{task.title}</LinkOrPlain>
           <span className="text-muted-foreground">
             {" "}
             ·{" "}
@@ -38,11 +52,42 @@ function TaskList({
                 task.priority as keyof typeof TASK_PRIORITY_LABELS
               ]
             }
-            {task.contact
-              ? ` · ${task.contact.first_name} ${task.contact.last_name}`
-              : ""}
+            {task.link ? ` · ${task.link.label}` : ""}
             {task.due_at ? ` · ${formatDate(task.due_at)}` : ""}
           </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function AgendaList({ activities }: { activities: TodayActivity[] }) {
+  if (activities.length === 0) {
+    return (
+      <p className="text-muted-foreground text-sm">
+        Sin eventos agendados para hoy.
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {activities.map((activity) => (
+        <li key={activity.id} className="text-sm">
+          <span className="text-muted-foreground">
+            {formatDateTime(activity.starts_at)} ·{" "}
+          </span>
+          <LinkOrPlain link={activity.link}>
+            {ACTIVITY_TYPE_LABELS[activity.type]}
+          </LinkOrPlain>
+          {activity.link ? (
+            <span className="text-muted-foreground">
+              {" "}
+              · {activity.link.label}
+            </span>
+          ) : null}
+          {activity.description ? (
+            <p className="text-muted-foreground">{activity.description}</p>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -57,12 +102,14 @@ export default async function TodayPage() {
   const firstName = profile?.first_name || "de nuevo";
   const organizationId = membership?.organization.id;
 
-  const [tasksToday, overdueTasks] = organizationId
+  const [tasksToday, overdueTasks, todayActivities, alerts] = organizationId
     ? await Promise.all([
         listTasksDueToday(organizationId),
         listOverdueTasks(organizationId),
+        listTodayActivities(organizationId),
+        listCommercialAlerts(organizationId),
       ])
-    : [[], []];
+    : [[], [], [], []];
 
   return (
     <div className="space-y-6">
@@ -87,8 +134,8 @@ export default async function TodayPage() {
               Agenda de hoy
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-muted-foreground text-sm">
-            Todavía no hay eventos. La agenda se implementa en la Fase 8.
+          <CardContent>
+            <AgendaList activities={todayActivities} />
           </CardContent>
         </Card>
         <Card>
@@ -120,8 +167,20 @@ export default async function TodayPage() {
               Alertas comerciales
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-muted-foreground text-sm">
-            Sin datos todavía.
+          <CardContent>
+            {alerts.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Sin alertas.</p>
+            ) : (
+              <ul className="space-y-2">
+                {alerts.map((alert) => (
+                  <li key={alert.href} className="text-sm">
+                    <Link href={alert.href} className="hover:underline">
+                      {alert.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       </div>

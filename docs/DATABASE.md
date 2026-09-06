@@ -402,6 +402,24 @@ docs/ARCHITECTURE.md desde el primer commit (activationConstraint,
 DndContext id fijo, opciones de sensor a nivel de módulo) — verificados
 en vivo de nuevo acá, sin necesidad de redescubrirlos.
 
+## Fase 7 — sin migración
+
+`/today` no agrega tablas ni columnas — es una capa de consultas nueva
+(`lib/data/today.ts`) sobre `tasks`/`activities` y las vistas
+`search_overview`/`acquisition_overview`/`deal_overview` que ya existían.
+Dos piezas nuevas de infraestructura, ninguna de esquema:
+
+- `lib/date.ts`: calcula los límites de "hoy" en la zona horaria del
+  negocio (Argentina) en vez de la zona implícita del proceso — ver el
+  gotcha en docs/ARCHITECTURE.md.
+- El resolver de `lib/data/today.ts` (`resolveEngagementLinks`): dado que
+  `tasks`/`activities` pueden estar atadas a cualquiera de los seis tipos
+  de entidad (contacto/propiedad/captación/búsqueda/lead/operación),
+  resuelve el link + label correcto para cada uno en lotes (mismo
+  criterio "evitar N+1" que `lib/data/acquisitions.ts`/`lib/data/deals.ts`),
+  en vez de asumir que solo hay `contact_id` como hacía el código de
+  Fase 0.
+
 ## Índices previstos (más allá de las PK/FK)
 
 `organization_id`, `contact_id`, `property_id`, `status`, `due_at`,
