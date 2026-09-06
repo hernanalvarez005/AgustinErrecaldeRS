@@ -21,12 +21,15 @@ export function ContactSelectField({
   contacts,
   placeholder = "Elegir contacto",
   className,
+  defaultValue,
 }: {
   name: string;
   id?: string;
   contacts: ContactOption[];
   placeholder?: string;
   className?: string;
+  /** Preselect a contact (e.g. arriving from "+ Nueva búsqueda" on a contact page). */
+  defaultValue?: string;
 }) {
   if (contacts.length === 1) {
     const only = contacts[0];
@@ -43,6 +46,7 @@ export function ContactSelectField({
   return (
     <Select
       name={name}
+      defaultValue={defaultValue}
       items={Object.fromEntries(
         contacts.map((c) => [c.id, `${c.first_name} ${c.last_name}`]),
       )}

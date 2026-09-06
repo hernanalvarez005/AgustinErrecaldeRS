@@ -14,6 +14,7 @@ function revalidateContext(context: EngagementContext) {
   if (context.propertyId) revalidatePath(`/properties/${context.propertyId}`);
   if (context.acquisitionId)
     revalidatePath(`/acquisitions/${context.acquisitionId}`);
+  if (context.searchId) revalidatePath(`/searches/${context.searchId}`);
 }
 
 export async function addNote(context: EngagementContext, formData: FormData) {
@@ -30,6 +31,7 @@ export async function addNote(context: EngagementContext, formData: FormData) {
     contact_id: context.contactId ?? null,
     property_id: context.propertyId ?? null,
     acquisition_id: context.acquisitionId ?? null,
+    search_id: context.searchId ?? null,
     body: parsed.data.body,
   });
   if (error) console.error("Failed to add note:", error.message);
@@ -58,6 +60,7 @@ export async function createTask(
     contact_id: context.contactId ?? null,
     property_id: context.propertyId ?? null,
     acquisition_id: context.acquisitionId ?? null,
+    search_id: context.searchId ?? null,
     title: parsed.data.title,
     priority: parsed.data.priority,
     due_at: parsed.data.dueAt
@@ -101,6 +104,7 @@ export async function logActivity(
     contact_id: context.contactId ?? null,
     property_id: context.propertyId ?? null,
     acquisition_id: context.acquisitionId ?? null,
+    search_id: context.searchId ?? null,
     type: parsed.data.type,
     description: parsed.data.description ?? null,
     status: "completed",

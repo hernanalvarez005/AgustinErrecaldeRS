@@ -103,6 +103,33 @@ export type AcquisitionStatus =
   | "won"
   | "lost";
 
+export type SearchStatus =
+  | "new"
+  | "qualified"
+  | "searching"
+  | "options_sent"
+  | "visiting"
+  | "negotiating"
+  | "reserved"
+  | "closed"
+  | "paused"
+  | "lost";
+
+export type SearchObjective =
+  | "primary_residence"
+  | "investment"
+  | "traditional_rent"
+  | "temporary_rent"
+  | "relocation"
+  | "liquidity_need"
+  | "inheritance"
+  | "separation"
+  | "city_change"
+  | "portfolio_expansion"
+  | "other";
+
+export type SearchUrgency = "high" | "medium" | "low";
+
 export interface Database {
   public: {
     Tables: {
@@ -259,6 +286,7 @@ export interface Database {
           contact_id: string | null;
           property_id: string | null;
           acquisition_id: string | null;
+          search_id: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -270,6 +298,7 @@ export interface Database {
           contact_id?: string | null;
           property_id?: string | null;
           acquisition_id?: string | null;
+          search_id?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -286,6 +315,7 @@ export interface Database {
           contact_id: string | null;
           property_id: string | null;
           acquisition_id: string | null;
+          search_id: string | null;
           priority: TaskPriority;
           due_at: string | null;
           status: TaskStatus;
@@ -303,6 +333,7 @@ export interface Database {
           contact_id?: string | null;
           property_id?: string | null;
           acquisition_id?: string | null;
+          search_id?: string | null;
           priority?: TaskPriority;
           due_at?: string | null;
           status?: TaskStatus;
@@ -325,6 +356,7 @@ export interface Database {
           contact_id: string | null;
           property_id: string | null;
           acquisition_id: string | null;
+          search_id: string | null;
           starts_at: string;
           ends_at: string | null;
           status: ActivityStatus;
@@ -344,6 +376,7 @@ export interface Database {
           contact_id?: string | null;
           property_id?: string | null;
           acquisition_id?: string | null;
+          search_id?: string | null;
           starts_at?: string;
           ends_at?: string | null;
           status?: ActivityStatus;
@@ -531,6 +564,72 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["valuations"]["Insert"]>;
         Relationships: [];
       };
+      property_searches: {
+        Row: {
+          id: string;
+          organization_id: string;
+          contact_id: string;
+          operation_type: OperationType;
+          property_types: PropertyType[];
+          min_price: number | null;
+          max_price: number | null;
+          currency: "ARS" | "USD" | null;
+          cities: string[];
+          neighborhoods: string[];
+          min_bedrooms: number | null;
+          max_bedrooms: number | null;
+          min_total_area: number | null;
+          min_covered_area: number | null;
+          requires_garage: boolean;
+          requires_balcony: boolean;
+          requires_patio: boolean;
+          requires_elevator: boolean;
+          must_have: string | null;
+          nice_to_have: string | null;
+          objective: SearchObjective | null;
+          urgency: SearchUrgency | null;
+          expected_decision_date: string | null;
+          financing_required: boolean;
+          status: SearchStatus;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          contact_id: string;
+          operation_type?: OperationType;
+          property_types?: PropertyType[];
+          min_price?: number | null;
+          max_price?: number | null;
+          currency?: "ARS" | "USD" | null;
+          cities?: string[];
+          neighborhoods?: string[];
+          min_bedrooms?: number | null;
+          max_bedrooms?: number | null;
+          min_total_area?: number | null;
+          min_covered_area?: number | null;
+          requires_garage?: boolean;
+          requires_balcony?: boolean;
+          requires_patio?: boolean;
+          requires_elevator?: boolean;
+          must_have?: string | null;
+          nice_to_have?: string | null;
+          objective?: SearchObjective | null;
+          urgency?: SearchUrgency | null;
+          expected_decision_date?: string | null;
+          financing_required?: boolean;
+          status?: SearchStatus;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["property_searches"]["Insert"]
+        >;
+        Relationships: [];
+      };
     };
     Views: {
       contact_overview: {
@@ -544,6 +643,15 @@ export interface Database {
       property_overview: {
         Row: Database["public"]["Tables"]["properties"]["Row"] & {
           primary_owner_name: string | null;
+        };
+        Relationships: [];
+      };
+      search_overview: {
+        Row: Database["public"]["Tables"]["property_searches"]["Row"] & {
+          contact_first_name: string;
+          contact_last_name: string;
+          last_interaction_at: string | null;
+          next_action_at: string | null;
         };
         Relationships: [];
       };
@@ -582,3 +690,7 @@ export type PropertyOwner =
 export type Acquisition =
   Database["public"]["Tables"]["property_acquisitions"]["Row"];
 export type Valuation = Database["public"]["Tables"]["valuations"]["Row"];
+export type PropertySearch =
+  Database["public"]["Tables"]["property_searches"]["Row"];
+export type SearchOverview =
+  Database["public"]["Views"]["search_overview"]["Row"];

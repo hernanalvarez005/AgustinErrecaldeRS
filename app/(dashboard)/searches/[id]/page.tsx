@@ -1,7 +1,9 @@
-import { Mail, MessageCircle, Pencil, Phone } from "lucide-react";
+import { Pencil } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { updateSearchStatus } from "@/app/(dashboard)/searches/actions";
+import { buildTimeline, Timeline } from "@/components/contacts/timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,183 +16,153 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { buildTimeline, Timeline } from "@/components/contacts/timeline";
 import {
   addNote,
   completeTask,
   createTask,
   logActivity,
 } from "@/lib/actions/engagement";
-import { getContact, getContactRoles } from "@/lib/data/contacts";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
-import { listSearchesByContact } from "@/lib/data/searches";
-import { formatDate, formatDateTime } from "@/lib/format";
-import { toWhatsAppLink } from "@/lib/phone";
+import { getSearch } from "@/lib/data/searches";
+import { formatDate } from "@/lib/format";
 import {
   ACTIVITY_TYPE_LABELS,
   LOGGABLE_ACTIVITY_TYPES,
 } from "@/lib/validations/activity";
-import { CONTACT_ROLE_LABELS } from "@/lib/validations/contact";
-import { PROPERTY_TYPE_LABELS } from "@/lib/validations/property";
-import { SEARCH_STATUS_LABELS } from "@/lib/validations/search";
+import {
+  OPERATION_TYPE_LABELS,
+  PROPERTY_TYPE_LABELS,
+} from "@/lib/validations/property";
+import {
+  SEARCH_OBJECTIVE_LABELS,
+  SEARCH_STATUS_LABELS,
+  SEARCH_STATUSES,
+  SEARCH_URGENCY_LABELS,
+} from "@/lib/validations/search";
 import { TASK_PRIORITY_LABELS, TASK_PRIORITIES } from "@/lib/validations/task";
+import { createClient } from "@/lib/supabase/server";
 
-export default async function ContactDetailPage({
+async function getContact(contactId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("contacts")
+    .select("id, first_name, last_name")
+    .eq("id", contactId)
+    .single();
+  return data;
+}
+
+function formatBudget(
+  min: number | null,
+  max: number | null,
+  currency: string | null,
+) {
+  if (!currency || (min === null && max === null)) return "Sin definir";
+  const fmt = (n: number) => n.toLocaleString("es-AR");
+  if (min !== null && max !== null)
+    return `${currency} ${fmt(min)}–${fmt(max)}`;
+  if (min !== null) return `Desde ${currency} ${fmt(min)}`;
+  return `Hasta ${currency} ${fmt(max as number)}`;
+}
+
+export default async function SearchDetailPage({
   params,
-}: PageProps<"/contacts/[id]">) {
+}: PageProps<"/searches/[id]">) {
   const { id } = await params;
 
-  const [contact, roles, searches, notes, tasks, activities] =
-    await Promise.all([
-      getContact(id),
-      getContactRoles(id),
-      listSearchesByContact(id),
-      getNotes({ contactId: id }),
-      getTasks({ contactId: id }),
-      getActivities({ contactId: id }),
-    ]);
+  const search = await getSearch(id);
+  if (!search) notFound();
 
-  if (!contact) notFound();
+  const [contact, notes, tasks, activities] = await Promise.all([
+    getContact(search.contact_id),
+    getNotes({ searchId: id }),
+    getTasks({ searchId: id }),
+    getActivities({ searchId: id }),
+  ]);
 
   const pendingTasks = tasks.filter(
     (t) => t.status === "pending" || t.status === "in_progress",
   );
-  const lastInteraction = activities
-    .filter((a) => a.status === "completed")
-    .sort(
-      (a, b) =>
-        new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime(),
-    )[0];
-  const nextAction = pendingTasks
-    .filter((t) => t.due_at)
-    .sort(
-      (a, b) =>
-        new Date(a.due_at as string).getTime() -
-        new Date(b.due_at as string).getTime(),
-    )[0];
-
   const timeline = buildTimeline({ notes, activities, tasks });
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {contact.first_name} {contact.last_name}
-            </h1>
-            <Button
-              render={<Link href={`/contacts/${contact.id}/edit`} />}
-              nativeButton={false}
-              variant="ghost"
-              size="icon-sm"
-            >
-              <Pencil />
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {roles.length === 0 ? (
-              <span className="text-muted-foreground text-sm">
-                Sin roles asignados
-              </span>
-            ) : (
-              roles.map((role) => (
-                <Badge key={role} variant="secondary">
-                  {CONTACT_ROLE_LABELS[role]}
-                </Badge>
-              ))
-            )}
-          </div>
-          <div className="flex flex-wrap gap-3 text-sm">
-            {contact.phone ? (
-              <a
-                href={`tel:${contact.phone}`}
-                className="flex items-center gap-1 hover:underline"
-              >
-                <Phone className="size-3.5" /> {contact.phone}
-              </a>
-            ) : null}
-            {contact.whatsapp || contact.phone ? (
-              <a
-                href={toWhatsAppLink(contact.whatsapp || contact.phone || "")}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 hover:underline"
-              >
-                <MessageCircle className="size-3.5" /> WhatsApp
-              </a>
-            ) : null}
-            {contact.email ? (
-              <a
-                href={`mailto:${contact.email}`}
-                className="flex items-center gap-1 hover:underline"
-              >
-                <Mail className="size-3.5" /> {contact.email}
-              </a>
-            ) : null}
-          </div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {contact
+              ? `${contact.first_name} ${contact.last_name}`
+              : "Búsqueda"}
+          </h1>
+          <Button
+            render={<Link href={`/searches/${search.id}/edit`} />}
+            nativeButton={false}
+            variant="ghost"
+            size="icon-sm"
+          >
+            <Pencil />
+          </Button>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge>{SEARCH_STATUS_LABELS[search.status]}</Badge>
+          {search.objective ? (
+            <Badge variant="secondary">
+              {SEARCH_OBJECTIVE_LABELS[search.objective]}
+            </Badge>
+          ) : null}
+          {search.urgency ? (
+            <span className="text-muted-foreground text-sm">
+              Urgencia: {SEARCH_URGENCY_LABELS[search.urgency]}
+            </span>
+          ) : null}
+        </div>
+        <p className="text-muted-foreground text-sm">
+          {OPERATION_TYPE_LABELS[search.operation_type]}
+          {search.property_types.length > 0
+            ? ` · ${search.property_types.map((t) => PROPERTY_TYPE_LABELS[t]).join(", ")}`
+            : ""}
+          {" · "}
+          {formatBudget(search.min_price, search.max_price, search.currency)}
+        </p>
+        {search.cities.length > 0 || search.neighborhoods.length > 0 ? (
+          <p className="text-muted-foreground text-sm">
+            Zona: {[...search.cities, ...search.neighborhoods].join(", ")}
+          </p>
+        ) : null}
+        {search.notes ? (
+          <p className="text-muted-foreground text-sm">{search.notes}</p>
+        ) : null}
       </div>
 
       <Card>
-        <CardContent className="grid grid-cols-2 gap-4 pt-6 text-sm">
-          <div>
-            <dt className="text-muted-foreground">Última interacción</dt>
-            <dd>
-              {lastInteraction
-                ? formatDateTime(lastInteraction.starts_at)
-                : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Próxima acción</dt>
-            <dd>
-              {nextAction
-                ? `${nextAction.title} · ${formatDate(nextAction.due_at)}`
-                : "—"}
-            </dd>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-sm">Búsquedas</CardTitle>
-          <Button
-            render={<Link href={`/searches/new?contactId=${contact.id}`} />}
-            nativeButton={false}
-            variant="ghost"
-            size="sm"
-          >
-            + Nueva búsqueda
-          </Button>
+        <CardHeader>
+          <CardTitle className="text-sm">Estado del pipeline</CardTitle>
         </CardHeader>
         <CardContent>
-          {searches.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Sin búsquedas registradas.
-            </p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {searches.map((s) => (
-                <li key={s.id}>
-                  <Link
-                    href={`/searches/${s.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {s.property_types.length > 0
-                      ? s.property_types
-                          .map((t) => PROPERTY_TYPE_LABELS[t])
-                          .join(", ")
-                      : "Búsqueda"}
-                  </Link>{" "}
-                  <span className="text-muted-foreground">
-                    · {SEARCH_STATUS_LABELS[s.status]}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <form
+            action={updateSearchStatus.bind(null, search.id)}
+            className="flex items-end gap-2"
+          >
+            <Select
+              name="status"
+              defaultValue={search.status}
+              items={SEARCH_STATUS_LABELS}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SEARCH_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {SEARCH_STATUS_LABELS[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="submit" variant="outline">
+              Actualizar estado
+            </Button>
+          </form>
         </CardContent>
       </Card>
 
@@ -200,7 +172,7 @@ export default async function ContactDetailPage({
         </CardHeader>
         <CardContent>
           <form
-            action={logActivity.bind(null, { contactId: contact.id })}
+            action={logActivity.bind(null, { searchId: search.id })}
             className="flex flex-wrap items-end gap-2"
           >
             <Select
@@ -262,7 +234,7 @@ export default async function ContactDetailPage({
                   <form
                     action={completeTask.bind(
                       null,
-                      { contactId: contact.id },
+                      { searchId: search.id },
                       task.id,
                     )}
                   >
@@ -276,7 +248,7 @@ export default async function ContactDetailPage({
           )}
 
           <form
-            action={createTask.bind(null, { contactId: contact.id })}
+            action={createTask.bind(null, { searchId: search.id })}
             className="flex flex-wrap items-end gap-2 border-t pt-4"
           >
             <Input
@@ -315,7 +287,7 @@ export default async function ContactDetailPage({
         </CardHeader>
         <CardContent className="space-y-4">
           <form
-            action={addNote.bind(null, { contactId: contact.id })}
+            action={addNote.bind(null, { searchId: search.id })}
             className="space-y-2"
           >
             <Textarea name="body" placeholder="Agregar una nota..." required />

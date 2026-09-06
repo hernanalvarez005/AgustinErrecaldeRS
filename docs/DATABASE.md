@@ -243,21 +243,57 @@ teléfono). Al soltar una tarjeta se actualiza el estado optimísticamente en
 el cliente y se persiste con `updateAcquisitionStatus()`. También hay vista
 tabla (`?view=table`).
 
-## Planificado (Fase 4 en adelante)
+## Implementado (Fase 4)
+
+### `property_searches`
+
+`id, organization_id, contact_id fk not null (a diferencia de
+`property_acquisitions`, acá el dueño del registro siempre es un contacto,
+nunca una propiedad — una búsqueda no tiene "propiedad" hasta que
+eventualmente conecta con una), operation_type text check in ('sale','rent',
+'temporary_rent') default 'sale', property_types text[] not null default
+'{}' check (<@ contra el mismo set de tipos que `properties.type`), min_price,
+max_price numeric(14,2) — check min_price <= max_price, currency text check
+in ('ARS','USD'), cities text[], neighborhoods text[] not null default '{}',
+min_bedrooms, max_bedrooms smallint — check min <= max,
+min_total_area, min_covered_area numeric(10,2),
+requires_garage/balcony/patio/elevator boolean not null default false,
+must_have, nice_to_have text, objective text check in (11 valores —
+`primary_residence`, `investment`, `traditional_rent`, `temporary_rent`,
+`relocation`, `liquidity_need`, `inheritance`, `separation`, `city_change`,
+`portfolio_expansion`, `other`), urgency text check in ('high','medium',
+'low'), expected_decision_date date, financing_required boolean not null
+default false, status text check in ('new','qualified','searching',
+'options_sent','visiting','negotiating','reserved','closed','paused',
+'lost') default 'new', notes text, created_at, updated_at`. Índices sobre
+`organization_id`, `contact_id`, `status`.
+
+### `notes` / `tasks` / `activities`
+
+Ganaron `search_id` (mismo patrón ALTER TABLE nullable que `property_id`
+en Fase 2 y `acquisition_id` en Fase 3). `EngagementContext` en
+`lib/data/engagement.ts`/`lib/actions/engagement.ts` ahora acepta
+`{ contactId, propertyId, acquisitionId, searchId }`.
+
+### `search_overview` (vista, `security_invoker`)
+
+Igual que `property_overview`/`contact_overview`: evita N+1 en el listado.
+Hace join a `contacts` para traer `contact_first_name`/`contact_last_name`
+(la búsqueda no tiene nombre propio, se lista por el cliente dueño), y
+subqueries de `max(activities.starts_at)` → `last_interaction_at` y
+`min(tasks.due_at) where status <> 'completed'` → `next_action_at`, igual
+patrón que las otras vistas overview.
+
+**Gotcha verificado (Fase 4):** `last_interaction_at` es un timestamp real
+(hora exacta de la actividad) pero se muestra en las listas truncado a
+"día" — ver la nota sobre timezones en docs/ARCHITECTURE.md antes de tocar
+`lib/format.ts` o de agregar una columna de fecha nueva a cualquier
+`*_overview`.
+
+## Planificado (Fase 5 en adelante)
 
 Esquema propuesto para el resto del dominio. Se implementa incrementalmente,
 una migración por fase (ver docs/ROADMAP.md), no todo de una vez.
-
-### `property_searches` (Fase 4)
-
-`id, organization_id, contact_id fk, operation_type, property_types text[],
-min_price, max_price numeric — check (min_price <= max_price), currency,
-cities text[], neighborhoods text[], min_bedrooms, max_bedrooms,
-min_total_area, min_covered_area, requires_garage/balcony/patio/elevator
-boolean, must_have, nice_to_have text, objective, urgency, expected_decision_date,
-financing_required boolean, status text check in ('new','qualified',
-'searching','options_sent','visiting','negotiating','reserved','closed',
-'paused','lost'), notes, created_at, updated_at`.
 
 ### `leads` (Fase 5)
 

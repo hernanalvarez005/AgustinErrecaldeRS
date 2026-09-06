@@ -74,10 +74,28 @@ criterio que Fase 1).
 Pendiente de esta fase, movido a después: tests automatizados (mismo
 criterio que Fases 1-2).
 
-## Fase 4 — Búsquedas
+## Fase 4 — Búsquedas ✅
 
-- Tabla `property_searches`, pipeline de comprador, filtros combinables
-  (zona + tipo + presupuesto + dormitorios + objetivo + urgencia).
+- Tabla `property_searches` (contact_id obligatorio — una búsqueda siempre
+  pertenece a un cliente, nunca a una propiedad), pipeline de comprador
+  (`status`, 10 valores), filtros combinables (zona + tipo + presupuesto +
+  dormitorios + objetivo + urgencia). `notes`/`tasks`/`activities` ganaron
+  `search_id`. Vista `search_overview` (`security_invoker`) con join a
+  `contacts` para nombre + `last_interaction_at`/`next_action_at`.
+- `/searches`: listado con las 8 columnas del punto 26 del spec (cliente,
+  objetivo, tipo, zona, presupuesto, estado, última interacción, próxima
+  acción) + filtros combinables.
+- `/searches/new`: soporta `?contactId=` para preseleccionar cliente desde
+  la ficha de contacto (botón "+ Nueva búsqueda" en `/contacts/[id]`).
+- `/searches/[id]`: edición de campos de la búsqueda, cambio de estado del
+  pipeline, registro de actividad, tareas, notas, timeline (mismo patrón
+  de "engagement" que contactos/propiedades/captaciones).
+- `lib/validations/shared.ts` centralizado como única fuente de la
+  normalización de campos vacíos (ver docs/ARCHITECTURE.md — bug real
+  encontrado en esta fase).
+
+Pendiente de esta fase, movido a después: tests automatizados (mismo
+criterio que Fases 1-3).
 
 ## Fase 5 — Leads
 
