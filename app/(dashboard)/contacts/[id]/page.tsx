@@ -26,15 +26,22 @@ import { getContact, getContactRoles } from "@/lib/data/contacts";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { listSearchesByContact } from "@/lib/data/searches";
 import { getVisitFeedbackForContact } from "@/lib/data/visit-feedback";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatBudget, formatDate, formatDateTime } from "@/lib/format";
 import { toWhatsAppLink } from "@/lib/phone";
 import {
   ACTIVITY_TYPE_LABELS,
   LOGGABLE_ACTIVITY_TYPES,
 } from "@/lib/validations/activity";
 import { CONTACT_ROLE_LABELS } from "@/lib/validations/contact";
-import { PROPERTY_TYPE_LABELS } from "@/lib/validations/property";
-import { SEARCH_STATUS_LABELS } from "@/lib/validations/search";
+import {
+  OPERATION_TYPE_LABELS,
+  PROPERTY_TYPE_LABELS,
+} from "@/lib/validations/property";
+import {
+  SEARCH_OBJECTIVE_LABELS,
+  SEARCH_STATUS_LABELS,
+  SEARCH_URGENCY_LABELS,
+} from "@/lib/validations/search";
 import { TASK_PRIORITY_LABELS, TASK_PRIORITIES } from "@/lib/validations/task";
 
 export default async function ContactDetailPage({
@@ -133,6 +140,24 @@ export default async function ContactDetailPage({
             ) : null}
           </div>
         </div>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            render={<Link href="#tareas" />}
+            nativeButton={false}
+            variant="outline"
+            size="sm"
+          >
+            + Tarea
+          </Button>
+          <Button
+            render={<Link href={`/calendar/new?contactId=${contact.id}`} />}
+            nativeButton={false}
+            variant="outline"
+            size="sm"
+          >
+            + Agendar
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -174,24 +199,51 @@ export default async function ContactDetailPage({
               Sin búsquedas registradas.
             </p>
           ) : (
-            <ul className="space-y-2 text-sm">
-              {searches.map((s) => (
-                <li key={s.id}>
-                  <Link
-                    href={`/searches/${s.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {s.property_types.length > 0
-                      ? s.property_types
-                          .map((t) => PROPERTY_TYPE_LABELS[t])
-                          .join(", ")
-                      : "Búsqueda"}
-                  </Link>{" "}
-                  <span className="text-muted-foreground">
-                    · {SEARCH_STATUS_LABELS[s.status]}
-                  </span>
-                </li>
-              ))}
+            <ul className="space-y-3 text-sm">
+              {searches.map((s) => {
+                const zone = [...s.cities, ...s.neighborhoods].join(", ");
+                const bedrooms =
+                  s.min_bedrooms !== null
+                    ? `${s.min_bedrooms}+ dormitorios`
+                    : null;
+                return (
+                  <li key={s.id} className="space-y-0.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <Link
+                        href={`/searches/${s.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {s.property_types.length > 0
+                          ? s.property_types
+                              .map((t) => PROPERTY_TYPE_LABELS[t])
+                              .join(", ")
+                          : "Búsqueda"}
+                      </Link>
+                      <Badge variant="secondary">
+                        {SEARCH_STATUS_LABELS[s.status]}
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground">
+                      {OPERATION_TYPE_LABELS[s.operation_type]}
+                      {zone ? ` · ${zone}` : ""}
+                      {bedrooms ? ` · ${bedrooms}` : ""}
+                      {" · "}
+                      {formatBudget(s.min_price, s.max_price, s.currency)}
+                    </p>
+                    {s.objective || s.urgency ? (
+                      <p className="text-muted-foreground">
+                        {s.objective
+                          ? SEARCH_OBJECTIVE_LABELS[s.objective]
+                          : ""}
+                        {s.objective && s.urgency ? " · " : ""}
+                        {s.urgency
+                          ? `Urgencia: ${SEARCH_URGENCY_LABELS[s.urgency]}`
+                          : ""}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
@@ -262,7 +314,7 @@ export default async function ContactDetailPage({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="tareas">
         <CardHeader>
           <CardTitle className="text-sm">Tareas</CardTitle>
         </CardHeader>

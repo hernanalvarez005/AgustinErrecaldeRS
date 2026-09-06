@@ -27,7 +27,7 @@ import { requireMembership } from "@/lib/auth/session";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { getPropertyMatchesForSearch } from "@/lib/data/matching";
 import { getSearch } from "@/lib/data/searches";
-import { formatDate } from "@/lib/format";
+import { formatBudget, formatDate } from "@/lib/format";
 import {
   ACTIVITY_TYPE_LABELS,
   LOGGABLE_ACTIVITY_TYPES,
@@ -53,19 +53,6 @@ async function getContact(contactId: string) {
     .eq("id", contactId)
     .single();
   return data;
-}
-
-function formatBudget(
-  min: number | null,
-  max: number | null,
-  currency: string | null,
-) {
-  if (!currency || (min === null && max === null)) return "Sin definir";
-  const fmt = (n: number) => n.toLocaleString("es-AR");
-  if (min !== null && max !== null)
-    return `${currency} ${fmt(min)}–${fmt(max)}`;
-  if (min !== null) return `Desde ${currency} ${fmt(min)}`;
-  return `Hasta ${currency} ${fmt(max as number)}`;
 }
 
 export default async function SearchDetailPage({

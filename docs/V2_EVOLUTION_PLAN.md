@@ -358,7 +358,32 @@ create table public.offers (
 
 ---
 
-## Bloque F — Ficha de cliente
+## Bloque F — Ficha de cliente ✅ implementado
+
+Implementado tal como se planeó, sin migración. Único agregado no
+anticipado: extraje `formatBudget` (antes una función local de
+`app/(dashboard)/searches/[id]/page.tsx`) a `lib/format.ts` para que la
+ficha de cliente use exactamente el mismo formato de presupuesto en vez
+de una segunda copia — verificado que `/searches/[id]` sigue mostrando
+igual después del refactor (regresión, no bloque F en sí).
+
+- `listSearchesByContact` pasó de 7 a 13 columnas — ahora trae
+  `cities`/`neighborhoods`/`min_bedrooms`/`objective`/`urgency` además de
+  lo que ya traía, todo en la misma consulta.
+- Cada búsqueda en la ficha de cliente muestra tipo, estado, operación,
+  zona, dormitorios mínimos, presupuesto, objetivo y urgencia — sin
+  fabricar datos: una búsqueda con menos campos cargados simplemente
+  muestra menos, nunca "—" de relleno.
+- Header con accesos directos "+ Tarea" (ancla a la card de Tareas,
+  mismo patrón que el banner de captación rápida de Bloque B) y
+  "+ Agendar" (reutiliza `/calendar/new?contactId=`, ya existente).
+- Verificado end-to-end contra Supabase real: un contacto con dos
+  búsquedas (una completa — zona/dormitorios/presupuesto/objetivo/
+  urgencia — y otra mínima) mostró cada una con exactamente los campos
+  que tenía cargados; "+ Tarea" apunta a `#tareas` correctamente. Sin
+  errores de consola ni de servidor.
+
+Detalle original del plan:
 
 | Mejora                                      | Estado actual                                                                                                      | Reutilizar                                                                 | Modificar                                                                                                           | Nuevo | Riesgo  |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ----- | ------- |

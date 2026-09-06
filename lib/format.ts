@@ -90,3 +90,23 @@ export function formatRelativeTime(value: string | null | undefined) {
 export function daysSinceNow(value: string): number {
   return Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000);
 }
+
+/**
+ * "USD 80.000–110.000" / "Desde USD 80.000" / "Hasta USD 110.000" /
+ * "Sin definir" — a search's budget range. Extracted from
+ * app/(dashboard)/searches/[id]/page.tsx (V2 bloque F) so the contact
+ * ficha's "necesidad activa" summary renders the exact same format
+ * instead of a second, possibly-drifting copy.
+ */
+export function formatBudget(
+  min: number | null,
+  max: number | null,
+  currency: string | null,
+) {
+  if (!currency || (min === null && max === null)) return "Sin definir";
+  const fmt = (n: number) => n.toLocaleString("es-AR");
+  if (min !== null && max !== null)
+    return `${currency} ${fmt(min)}–${fmt(max)}`;
+  if (min !== null) return `Desde ${currency} ${fmt(min)}`;
+  return `Hasta ${currency} ${fmt(max as number)}`;
+}

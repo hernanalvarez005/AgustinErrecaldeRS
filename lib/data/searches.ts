@@ -46,12 +46,18 @@ export async function listSearches({
   return data;
 }
 
+/**
+ * Every field the contact ficha's "necesidad activa" summary shows (V2
+ * bloque F) — not just type + status like before, so a client with
+ * several searches (docs/PRODUCT_SPEC.md: never reduce a client to one
+ * need) shows each one's full picture without navigating away.
+ */
 export async function listSearchesByContact(contactId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("property_searches")
     .select(
-      "id, operation_type, property_types, min_price, max_price, currency, status",
+      "id, operation_type, property_types, cities, neighborhoods, min_price, max_price, currency, min_bedrooms, max_bedrooms, objective, urgency, status",
     )
     .eq("contact_id", contactId)
     .order("created_at", { ascending: false });
