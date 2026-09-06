@@ -442,6 +442,36 @@ mostrar datos reales.
   zona horaria) y un instante UTC correcto — ver el gotcha nuevo en
   docs/ARCHITECTURE.md.
 
+## Fase 9 — implementado
+
+### `google_calendar_connections`
+
+`user_id uuid primary key references auth.users (id) on delete cascade,
+google_email, access_token not null, refresh_token not null,
+token_expiry timestamptz not null, calendar_id text not null default
+'primary', created_at, updated_at`.
+
+1:1 con `auth.users`, igual que `profiles` — sin `organization_id`. Es
+deliberado: una conexión de Google es una credencial personal del asesor
+(su propia cuenta de Google), no un dato de negocio compartido por la
+organización, así que no sigue el patrón `organization_id in (select
+private.user_org_ids())` del resto de las tablas — la política RLS es
+"solo el dueño de la fila" (`user_id = auth.uid()`), sin excepción ni para
+otros miembros de la misma organización.
+
+**Límite conocido, documentado a propósito:** los tokens no están
+cifrados a nivel de columna (pgcrypto) — cifrarlos introduce su propio
+problema de dónde guardar la clave de cifrado, que para una MVP de un
+solo asesor no se justifica todavía. La seguridad se apoya en RLS (dueño
+únicamente) + que los tokens nunca salen del servidor (ningún Server
+Action/Route Handler los expone al cliente) + el cifrado en reposo que
+Supabase ya provee a nivel de infraestructura para toda la base. Revisar
+si esto deja de alcanzar cuando haya más de un asesor por organización.
+
+`activities.google_event_id` (Fase 1, sin usar hasta ahora) es donde se
+guarda el id del evento espejo en Google — no hace falta ninguna columna
+nueva en `activities`.
+
 ## Fase 10 — sin migración
 
 `/dashboard` no agrega tablas ni columnas — es una capa de consultas nueva
@@ -474,35 +504,46 @@ mostrar datos reales.
   volumen de un solo asesor, y evita una consulta de agregación por cada
   una de las ~9 etapas posibles de cada pipeline.
 
-## Implementado (Fase 9)
+## Fase 11 — sin migración
 
-### `google_calendar_connections`
+`/searches/[id]` y `/properties/[id]` no agregan tablas ni columnas —
+"Coincidencias" es una capa de consultas + cálculo (`lib/matching/score.ts`,
+puro; `lib/data/matching.ts`, consultas) sobre `properties`/
+`property_searches`, ambas ya existentes. Nada se persiste: el
+`match_score` se calcula en el momento de renderizar la página, no en cada
+escritura — con el volumen de un solo asesor no hace falta cachearlo.
 
-`user_id uuid primary key references auth.users (id) on delete cascade,
-google_email, access_token not null, refresh_token not null,
-token_expiry timestamptz not null, calendar_id text not null default
-'primary', created_at, updated_at`.
-
-1:1 con `auth.users`, igual que `profiles` — sin `organization_id`. Es
-deliberado: una conexión de Google es una credencial personal del asesor
-(su propia cuenta de Google), no un dato de negocio compartido por la
-organización, así que no sigue el patrón `organization_id in (select
-private.user_org_ids())` del resto de las tablas — la política RLS es
-"solo el dueño de la fila" (`user_id = auth.uid()`), sin excepción ni para
-otros miembros de la misma organización.
-
-**Límite conocido, documentado a propósito:** los tokens no están
-cifrados a nivel de columna (pgcrypto) — cifrarlos introduce su propio
-problema de dónde guardar la clave de cifrado, que para una MVP de un
-solo asesor no se justifica todavía. La seguridad se apoya en RLS (dueño
-únicamente) + que los tokens nunca salen del servidor (ningún Server
-Action/Route Handler los expone al cliente) + el cifrado en reposo que
-Supabase ya provee a nivel de infraestructura para toda la base. Revisar
-si esto deja de alcanzar cuando haya más de un asesor por organización.
-
-`activities.google_event_id` (Fase 1, sin usar hasta ahora) es donde se
-guarda el id del evento espejo en Google — no hace falta ninguna columna
-nueva en `activities`.
+- Filtros duros primero (`isPropertyEligibleForSearch`): `operation_type`
+  igual, y si la búsqueda especificó `property_types`, la propiedad tiene
+  que estar en esa lista. Lo que no pasa esto ni siquiera se puntúa — se
+  excluye de la lista directamente, no aparece con un puntaje bajo.
+- Sobre los candidatos que pasan el filtro, un puntaje ponderado
+  (presupuesto 35, ubicación 25, ambientes 20, superficie 10, cochera 10)
+  donde cada criterio solo cuenta si HAY dato de los dos lados —
+  normalizado contra el peso de los criterios aplicables, para que una
+  búsqueda con pocas restricciones no salga perjudicada por "datos
+  faltantes" que nunca pidió, y una propiedad con un campo vacío tampoco
+  quede en cero de forma injusta.
+- **Límite conocido, documentado a propósito:** `property_searches` tiene
+  `requires_balcony`/`requires_patio`/`requires_elevator`, pero
+  `properties` no tiene ninguna columna de amenities equivalente — no hay
+  nada contra qué compararlos, así que esos tres requisitos nunca se
+  puntúan. Solo `requires_garage` se puntúa, contra `garage_spaces`.
+  Agregar esas columnas a `properties` es la extensión natural si hace
+  falta más precisión, pero no se justificó agregarlas solo para esta
+  fase (regla general del proyecto: no anticipar columnas sin un caso de
+  uso ya construido que las necesite).
+- Solo se consideran propiedades `capturing`/`active` (no `draft`/
+  `valuation` — sin precio todavía; no `reserved`/`sold`/`rented`/
+  `paused`/`lost`/`archived` — ya no disponibles) y búsquedas en estado
+  abierto (no `reserved`/`closed`/`paused`/`lost`). Cada consulta de
+  candidatos trae como máximo 500 filas (`CANDIDATE_ROW_LIMIT`) y se
+  puntúa/ordena en memoria, mismo criterio que Fase 10; el resultado se
+  recorta a las 20 mejores coincidencias (`MAX_MATCHES`) — es una lista
+  corta para que la lea una persona, no algo paginado.
+- `getSearchMatchesForProperty` lee de `search_overview` (Fase 4) en vez de
+  `property_searches` directo, para traer el nombre del contacto sin una
+  consulta aparte.
 
 ## Índices previstos (más allá de las PK/FK)
 

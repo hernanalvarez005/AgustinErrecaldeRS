@@ -265,9 +265,39 @@ Pendiente de esta fase, movido a después: tests automatizados (mismo
 criterio que Fases 1-9); un embudo con historial real de transiciones de
 estado requeriría una tabla de auditoría que no existe todavía.
 
-## Fase 11 — Matching
+## Fase 11 — Matching ✅
 
-- `match_score` determinístico (0–100) propiedad ↔ búsqueda, sin IA.
+- Sección "Coincidencias" en `/searches/[id]` (propiedades activas que
+  encajan) y en `/properties/[id]` (búsquedas abiertas que encajan) —
+  misma lógica de scoring reutilizada en las dos direcciones.
+  Sin migración esta fase: cálculo en el momento (`lib/matching/score.ts` +
+  `lib/data/matching.ts`), nada persistido.
+- `match_score` (0–100) determinístico, sin IA: filtros duros (mismo
+  `operation_type`; si la búsqueda especificó `property_types`, la
+  propiedad tiene que estar en esa lista) excluyen candidatos de la lista
+  directamente — no bajan el puntaje, los sacan. Sobre los que pasan, un
+  puntaje ponderado por criterios (presupuesto 35, ubicación 25, ambientes
+  20, superficie 10, cochera 10), cada uno evaluado solo si ambos lados
+  tienen el dato — normalizado contra el peso de los criterios aplicables
+  para no castigar de más ni de menos por datos faltantes de cualquiera
+  de los dos lados (ver docs/DATABASE.md).
+- Límite conocido, documentado a propósito: `property_searches` registra
+  `requires_balcony`/`requires_patio`/`requires_elevator`, pero
+  `properties` no tiene columnas equivalentes para compararlos — esos tres
+  requisitos no se puntúan todavía (no hay nada contra qué compararlos).
+  Solo `requires_garage` se puntúa, contra `garage_spaces`.
+- Solo se sugieren propiedades con estado `capturing`/`active` y
+  búsquedas con estado abierto (no `reserved`/`closed`/`paused`/`lost`) —
+  coincidencias por debajo de 40% no se muestran (`MIN_MATCH_SCORE`).
+- Verificado end-to-end contra Supabase real: una búsqueda + 4 propiedades
+  candidatas (match fuerte 100%, match parcial 58%, tipo incorrecto
+  excluido, operación incorrecta excluida) — puntajes exactos en ambas
+  direcciones (desde la búsqueda y desde la propiedad), sin errores de
+  consola ni de servidor. Sin bugs encontrados esta fase.
+
+Pendiente de esta fase, movido a después: tests automatizados (mismo
+criterio que Fases 1-10); agregar columnas de amenities a `properties`
+(balcón/patio/ascensor) para poder puntuar esos tres requisitos.
 
 ## Fase 12 — Fidelización
 

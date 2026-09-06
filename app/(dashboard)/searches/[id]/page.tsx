@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { updateSearchStatus } from "@/app/(dashboard)/searches/actions";
 import { buildTimeline, Timeline } from "@/components/contacts/timeline";
+import { MatchScoreBadge } from "@/components/matching/match-score-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +23,9 @@ import {
   createTask,
   logActivity,
 } from "@/lib/actions/engagement";
+import { requireMembership } from "@/lib/auth/session";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
+import { getPropertyMatchesForSearch } from "@/lib/data/matching";
 import { getSearch } from "@/lib/data/searches";
 import { formatDate } from "@/lib/format";
 import {
@@ -69,15 +72,17 @@ export default async function SearchDetailPage({
   params,
 }: PageProps<"/searches/[id]">) {
   const { id } = await params;
+  const membership = await requireMembership();
 
   const search = await getSearch(id);
   if (!search) notFound();
 
-  const [contact, notes, tasks, activities] = await Promise.all([
+  const [contact, notes, tasks, activities, matches] = await Promise.all([
     getContact(search.contact_id),
     getNotes({ searchId: id }),
     getTasks({ searchId: id }),
     getActivities({ searchId: id }),
+    getPropertyMatchesForSearch(membership.organization.id, search),
   ]);
 
   const pendingTasks = tasks.filter(
@@ -163,6 +168,43 @@ export default async function SearchDetailPage({
               Actualizar estado
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Coincidencias</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {matches.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Sin propiedades activas que coincidan por ahora.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {matches.map((match) => (
+                <li key={match.property.id} className="space-y-0.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Link
+                      href={`/properties/${match.property.id}`}
+                      className="text-sm font-medium hover:underline"
+                    >
+                      {match.property.title}
+                    </Link>
+                    <MatchScoreBadge score={match.score} />
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    {match.summary}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-muted-foreground text-xs">
+            Coincidencia calculada por criterios (presupuesto, ubicación,
+            ambientes, superficie, cochera) — no evalúa balcón/patio/ascensor
+            porque las propiedades todavía no registran esos datos.
+          </p>
         </CardContent>
       </Card>
 

@@ -17,6 +17,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { buildTimeline, Timeline } from "@/components/contacts/timeline";
 import { ContactSelectField } from "@/components/contacts/contact-select-field";
+import { MatchScoreBadge } from "@/components/matching/match-score-badge";
 import { requireMembership } from "@/lib/auth/session";
 import {
   addNote,
@@ -25,6 +26,7 @@ import {
   logActivity,
 } from "@/lib/actions/engagement";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
+import { getSearchMatchesForProperty } from "@/lib/data/matching";
 import {
   getProperty,
   getPropertyOwners,
@@ -53,17 +55,18 @@ export default async function PropertyDetailPage({
   const { id } = await params;
   const membership = await requireMembership();
 
-  const [property, owners, contactOptions, notes, tasks, activities] =
+  const property = await getProperty(id);
+  if (!property) notFound();
+
+  const [owners, contactOptions, notes, tasks, activities, matches] =
     await Promise.all([
-      getProperty(id),
       getPropertyOwners(id),
       listContactOptions(membership.organization.id),
       getNotes({ propertyId: id }),
       getTasks({ propertyId: id }),
       getActivities({ propertyId: id }),
+      getSearchMatchesForProperty(membership.organization.id, property),
     ]);
-
-  if (!property) notFound();
 
   const pendingTasks = tasks.filter(
     (t) => t.status === "pending" || t.status === "in_progress",
@@ -191,6 +194,44 @@ export default async function PropertyDetailPage({
               </Button>
             </form>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Coincidencias</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {matches.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Sin búsquedas activas que coincidan por ahora.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {matches.map((match) => (
+                <li key={match.search.id} className="space-y-0.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Link
+                      href={`/searches/${match.search.id}`}
+                      className="text-sm font-medium hover:underline"
+                    >
+                      {match.search.contact_first_name}{" "}
+                      {match.search.contact_last_name}
+                    </Link>
+                    <MatchScoreBadge score={match.score} />
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    {match.summary}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-muted-foreground text-xs">
+            Coincidencia calculada por criterios (presupuesto, ubicación,
+            ambientes, superficie, cochera) — no evalúa balcón/patio/ascensor
+            porque esta propiedad todavía no registra esos datos.
+          </p>
         </CardContent>
       </Card>
 
