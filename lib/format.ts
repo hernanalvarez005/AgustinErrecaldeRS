@@ -29,7 +29,7 @@
  * through `formatDate`.
  */
 
-const BUSINESS_TIMEZONE = "America/Argentina/Buenos_Aires";
+import { BUSINESS_TIMEZONE } from "@/lib/date";
 
 export function formatDate(value: string | null | undefined) {
   if (!value) return null;

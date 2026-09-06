@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentMembership, getProfile } from "@/lib/auth/session";
+import { BUSINESS_TIMEZONE } from "@/lib/date";
 import {
   listCommercialAlerts,
   listOverdueTasks,
@@ -123,6 +124,7 @@ export default async function TodayPage() {
             weekday: "long",
             day: "numeric",
             month: "long",
+            timeZone: BUSINESS_TIMEZONE,
           })}
         </p>
       </div>
