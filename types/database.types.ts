@@ -130,6 +130,15 @@ export type SearchObjective =
 
 export type SearchUrgency = "high" | "medium" | "low";
 
+export type LeadStatus =
+  | "new"
+  | "contacted"
+  | "qualified"
+  | "converted"
+  | "not_interested"
+  | "unresponsive"
+  | "lost";
+
 export interface Database {
   public: {
     Tables: {
@@ -287,6 +296,7 @@ export interface Database {
           property_id: string | null;
           acquisition_id: string | null;
           search_id: string | null;
+          lead_id: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -299,6 +309,7 @@ export interface Database {
           property_id?: string | null;
           acquisition_id?: string | null;
           search_id?: string | null;
+          lead_id?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -316,6 +327,7 @@ export interface Database {
           property_id: string | null;
           acquisition_id: string | null;
           search_id: string | null;
+          lead_id: string | null;
           priority: TaskPriority;
           due_at: string | null;
           status: TaskStatus;
@@ -334,6 +346,7 @@ export interface Database {
           property_id?: string | null;
           acquisition_id?: string | null;
           search_id?: string | null;
+          lead_id?: string | null;
           priority?: TaskPriority;
           due_at?: string | null;
           status?: TaskStatus;
@@ -357,6 +370,7 @@ export interface Database {
           property_id: string | null;
           acquisition_id: string | null;
           search_id: string | null;
+          lead_id: string | null;
           starts_at: string;
           ends_at: string | null;
           status: ActivityStatus;
@@ -377,6 +391,7 @@ export interface Database {
           property_id?: string | null;
           acquisition_id?: string | null;
           search_id?: string | null;
+          lead_id?: string | null;
           starts_at?: string;
           ends_at?: string | null;
           status?: ActivityStatus;
@@ -630,6 +645,52 @@ export interface Database {
         >;
         Relationships: [];
       };
+      leads: {
+        Row: {
+          id: string;
+          organization_id: string;
+          first_name: string;
+          last_name: string | null;
+          phone: string | null;
+          email: string | null;
+          message: string | null;
+          source: ContactSource | null;
+          property_id: string | null;
+          status: LeadStatus;
+          assigned_to: string | null;
+          contact_id: string | null;
+          search_id: string | null;
+          notes: string | null;
+          first_contact_at: string | null;
+          converted_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          first_name: string;
+          last_name?: string | null;
+          phone?: string | null;
+          email?: string | null;
+          message?: string | null;
+          source?: ContactSource | null;
+          property_id?: string | null;
+          status?: LeadStatus;
+          assigned_to?: string | null;
+          contact_id?: string | null;
+          search_id?: string | null;
+          notes?: string | null;
+          first_contact_at?: string | null;
+          converted_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["leads"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       contact_overview: {
@@ -650,6 +711,13 @@ export interface Database {
         Row: Database["public"]["Tables"]["property_searches"]["Row"] & {
           contact_first_name: string;
           contact_last_name: string;
+          last_interaction_at: string | null;
+          next_action_at: string | null;
+        };
+        Relationships: [];
+      };
+      lead_overview: {
+        Row: Database["public"]["Tables"]["leads"]["Row"] & {
           last_interaction_at: string | null;
           next_action_at: string | null;
         };
@@ -694,3 +762,5 @@ export type PropertySearch =
   Database["public"]["Tables"]["property_searches"]["Row"];
 export type SearchOverview =
   Database["public"]["Views"]["search_overview"]["Row"];
+export type Lead = Database["public"]["Tables"]["leads"]["Row"];
+export type LeadOverview = Database["public"]["Views"]["lead_overview"]["Row"];

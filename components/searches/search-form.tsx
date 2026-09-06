@@ -32,15 +32,19 @@ export function SearchForm({
   search,
   contacts,
   defaultContactId,
+  leadId,
   action,
 }: {
   search?: PropertySearch;
   contacts: ContactOption[];
   defaultContactId?: string;
+  /** Set when arriving from "Convertir" on a lead — lets createSearch link the new search back to it. */
+  leadId?: string;
   action: (formData: FormData) => void | Promise<void>;
 }) {
   return (
     <form action={action} className="space-y-6">
+      {leadId ? <input type="hidden" name="leadId" value={leadId} /> : null}
       {search ? (
         <>
           <input type="hidden" name="contactId" value={search.contact_id} />

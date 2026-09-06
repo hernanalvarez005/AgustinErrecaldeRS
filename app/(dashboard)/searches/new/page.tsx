@@ -10,6 +10,7 @@ export default async function NewSearchPage({
   const error = typeof params.error === "string" ? params.error : undefined;
   const contactId =
     typeof params.contactId === "string" ? params.contactId : undefined;
+  const leadId = typeof params.leadId === "string" ? params.leadId : undefined;
 
   const membership = await requireMembership();
   const contacts = await listContactOptions(membership.organization.id);
@@ -38,6 +39,7 @@ export default async function NewSearchPage({
         <SearchForm
           contacts={contacts}
           defaultContactId={contactId}
+          leadId={leadId}
           action={createSearch}
         />
       )}

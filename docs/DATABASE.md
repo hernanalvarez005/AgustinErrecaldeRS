@@ -290,18 +290,65 @@ patrón que las otras vistas overview.
 `lib/format.ts` o de agregar una columna de fecha nueva a cualquier
 `*_overview`.
 
-## Planificado (Fase 5 en adelante)
+## Implementado (Fase 5)
 
-Esquema propuesto para el resto del dominio. Se implementa incrementalmente,
-una migración por fase (ver docs/ROADMAP.md), no todo de una vez.
+### `leads`
 
-### `leads` (Fase 5)
+`id, organization_id, first_name text not null, last_name, phone, email,
+message, source (mismo enum que `contacts.source`/`property_acquisitions.origin`— no un`source_id` separado, mismo criterio de reutilización que Fase 3),
+property_id fk nullable on delete set null, status text check in ('new',
+'contacted','qualified','converted','not_interested','unresponsive','lost')
+default 'new', assigned_to uuid references auth.users (reservado para
+equipos, sin UI todavía), contact_id fk nullable on delete set null,
+search_id fk nullable on delete set null, notes, first_contact_at,
+converted_at, created_at, updated_at`. Índices sobre `organization_id`,
+`status`, `property_id`, `contact_id`.
 
-`id, organization_id, first_name, last_name, phone, email, message, source_id,
-property_id fk, status text check in ('new','contacted','qualified',
-'converted','not_interested','unresponsive','lost'), assigned_to, created_at,
-first_contact_at, converted_at, contact_id fk nullable, search_id fk
-nullable, notes`.
+`contact_id`/`search_id` son `on delete set null` (no `cascade`) a
+propósito: un lead es un registro histórico de cómo llegó una consulta, y
+debe sobrevivir aunque el contacto o la búsqueda resultante se borren más
+adelante — mismo criterio de "conservar historial" que la regla de negocio
+7 del spec.
+
+### `notes` / `tasks` / `activities`
+
+Ganaron `lead_id` (mismo patrón ALTER TABLE nullable que en Fases 2-4).
+
+### `lead_overview` (vista, `security_invoker`)
+
+Mismo patrón que `contact_overview`/`property_overview`/`search_overview`:
+precomputa `last_interaction_at` (`max(activities.starts_at)`) y
+`next_action_at` (`min(tasks.due_at)` con `status <> 'completed'`) para
+evitar N+1 en el inbox. La UI de `/leads` solo muestra `next_action_at`
+("Próxima acción") — `last_interaction_at` se trae pero no se usa todavía
+en ninguna columna; queda disponible para cuando el inbox necesite
+ordenar por "hace cuánto no le escribo".
+
+### Conversión: lead → contacto + búsqueda
+
+El flujo completo vive en `app/(dashboard)/leads/actions.ts` +
+`components/leads/convert-lead-form.tsx`:
+
+1. `checkLeadDuplicates` reutiliza `findPossibleDuplicates` (la misma
+   función de Fase 1, sin duplicar lógica) para avisar — nunca bloquear —
+   sobre un contacto existente con el mismo teléfono/email.
+2. Si el asesor elige un match existente, `convertLeadToExistingContact`
+   solo vincula `lead.contact_id`, sin crear nada.
+3. Si elige crear de todas formas (o no hay match), `convertLeadToNewContact`
+   crea el contacto y vincula el lead.
+4. Ambos caminos terminan con `redirect` a `/searches/new?contactId=...&leadId=...`
+   — la creación de la búsqueda reutiliza el formulario completo de Fase 4
+   en vez de duplicar sus ~15 campos en un formulario de conversión aparte.
+5. `createSearch` (en `searches/actions.ts`) lee el `leadId` oculto del
+   formulario y, si está presente, actualiza `leads.search_id` +
+   `status='converted'` al crear la búsqueda — cerrando el círculo sin que
+   `searches/actions.ts` necesite saber nada más de leads que ese único
+   campo oculto.
+
+Esto significa que "convertir un lead" nunca duplica un contacto ni una
+búsqueda (regla de negocio 6 del spec), verificado en vivo con tres casos:
+vincular a un contacto existente, crear uno nuevo de cero, y forzar la
+creación de todas formas pese a un match de teléfono.
 
 ### `deals` (Fase 6)
 

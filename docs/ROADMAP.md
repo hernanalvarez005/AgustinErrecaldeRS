@@ -97,10 +97,28 @@ criterio que Fases 1-2).
 Pendiente de esta fase, movido a después: tests automatizados (mismo
 criterio que Fases 1-3).
 
-## Fase 5 — Leads
+## Fase 5 — Leads ✅
 
-- Tabla `leads`, inbox comercial, conversión lead → contacto + búsqueda sin
-  duplicar datos.
+- Tabla `leads` (first_name obligatorio, resto opcional — la carga manual
+  de una consulta cruda no debería exigir todos los datos), `notes`/`tasks`/
+  `activities` ganaron `lead_id`. Vista `lead_overview` con
+  `next_action_at`.
+- `/leads`: inbox con nombre, contacto, mensaje, origen, estado, fecha de
+  ingreso y próxima acción, con filtros por origen/estado/texto.
+- `/leads/new` y `/edit`: carga y edición manual (portal, WhatsApp,
+  Instagram, referido...), con selector opcional de la propiedad de
+  interés.
+- `/leads/[id]`: cambio de estado, conversión, actividad/tareas/notas/
+  timeline (mismo patrón de engagement compartido).
+- Conversión lead → contacto + búsqueda: reutiliza `findPossibleDuplicates`
+  de Fase 1 (avisa, nunca bloquea) y el formulario de búsqueda completo de
+  Fase 4 (`/searches/new?contactId=&leadId=`) en vez de duplicar campos —
+  ver docs/DATABASE.md para el flujo completo. Verificado en vivo: vincular
+  a un contacto existente, crear uno nuevo, y forzar la creación pese a un
+  duplicado detectado — en los tres casos, cero contactos duplicados.
+
+Pendiente de esta fase, movido a después: tests automatizados (mismo
+criterio que Fases 1-4).
 
 ## Fase 6 — Operaciones
 

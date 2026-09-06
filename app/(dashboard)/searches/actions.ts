@@ -78,6 +78,28 @@ export async function createSearch(formData: FormData) {
     failCreate("No pudimos guardar la búsqueda. Intentá nuevamente.");
   }
 
+  // Closes the loop for "lead → contacto + búsqueda" (docs/PRODUCT_SPEC.md
+  // regla 6): arriving here from a lead's "Convertir" flow carries leadId
+  // as a hidden field, and creating the search is the second half of the
+  // conversion — link it back and mark the lead converted.
+  const leadIdRaw = formData.get("leadId");
+  const leadId = typeof leadIdRaw === "string" && leadIdRaw ? leadIdRaw : null;
+  if (leadId) {
+    const { error: leadError } = await supabase
+      .from("leads")
+      .update({
+        search_id: search.id,
+        status: "converted",
+        converted_at: new Date().toISOString(),
+      })
+      .eq("id", leadId);
+    if (leadError) {
+      console.error("Failed to link lead to new search:", leadError.message);
+    }
+    revalidatePath("/leads");
+    revalidatePath(`/leads/${leadId}`);
+  }
+
   revalidatePath("/searches");
   redirect(`/searches/${search.id}`);
 }

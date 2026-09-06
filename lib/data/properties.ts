@@ -108,3 +108,20 @@ export async function listContactOptions(organizationId: string) {
   }
   return data;
 }
+
+/** Every non-archived property in the org, for the "lead interesado en" picker. */
+export async function listPropertyOptions(organizationId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select("id, title")
+    .eq("organization_id", organizationId)
+    .is("archived_at", null)
+    .order("title", { ascending: true });
+
+  if (error) {
+    console.error("Failed to list properties for lead picker:", error.message);
+    return [];
+  }
+  return data;
+}
