@@ -137,3 +137,19 @@ getCurrentMembership()` hace `.limit(1)`). El esquema soporta N
   propia. Correcto para un asesor solo; el día que haya varios asesores en
   una organización esto necesita revisarse (asignación, permisos por rol)
   antes de ofrecerlo como feature de equipo.
+
+## Gotcha verificado: shadcn `Select` (Base UI) con una sola opción
+
+Encontrado probando el picker de propietarios de una propiedad contra datos
+reales: un `<Select>` de shadcn/Base UI con **un solo item** puede mostrar
+ese item en el trigger con un solo click (por el posicionamiento
+`alignItemWithTrigger`, que superpone el ítem sobre el trigger) sin llegar a
+confirmar la selección — el input oculto que alimenta el `FormData` queda
+vacío, y el submit no manda nada. Con dos o más items, un click para abrir +
+un click sobre el item funciona perfectamente (verificado). La solución no
+es una animación ni un `defaultValue`: cuando la lista tiene exactamente un
+elemento, no se renderiza el `Select` — se manda un `<input type="hidden">`
+con ese único valor y se muestra el nombre como texto plano (ver
+`app/(dashboard)/properties/[id]/page.tsx`, selector de propietarios). Si
+aparece un nuevo `Select` con una lista que puede tener un solo elemento
+(no un enum fijo con 2+ opciones), aplicar el mismo patrón.
