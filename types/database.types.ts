@@ -597,6 +597,34 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["valuations"]["Insert"]>;
         Relationships: [];
       };
+      property_price_history: {
+        Row: {
+          id: string;
+          organization_id: string;
+          property_id: string;
+          previous_price: number | null;
+          new_price: number | null;
+          currency: "ARS" | "USD" | null;
+          change_reason: string | null;
+          changed_by: string | null;
+          changed_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          property_id: string;
+          previous_price?: number | null;
+          new_price?: number | null;
+          currency?: "ARS" | "USD" | null;
+          change_reason?: string | null;
+          changed_by?: string | null;
+          changed_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["property_price_history"]["Insert"]
+        >;
+        Relationships: [];
+      };
       property_searches: {
         Row: {
           id: string;
@@ -869,6 +897,8 @@ export type Acquisition =
 export type AcquisitionOverview =
   Database["public"]["Views"]["acquisition_overview"]["Row"];
 export type Valuation = Database["public"]["Tables"]["valuations"]["Row"];
+export type PropertyPriceHistoryEntry =
+  Database["public"]["Tables"]["property_price_history"]["Row"];
 export type PropertySearch =
   Database["public"]["Tables"]["property_searches"]["Row"];
 export type SearchOverview =

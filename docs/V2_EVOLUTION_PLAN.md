@@ -119,7 +119,53 @@ Detalle original del plan:
 
 ---
 
-## Bloque C — Ficha de propiedad
+## Bloque C — Ficha de propiedad ✅ implementado
+
+Implementado con un ajuste real de alcance sobre el plan original:
+
+- Tabs: solo se crearon **Resumen** y **Actividad** — "Interesados",
+  "Visitas" y "Ofertas" no tienen todavía ninguna tabla/dato real
+  (dependen de los Bloques D/E/G, no construidos aún) y "Documentación"
+  nunca estuvo definida en ningún bloque de este plan. Crear esas tabs
+  ahora habría violado la regla explícita del spec ("no crear tabs
+  vacíos"). Se agregarán cuando el bloque correspondiente exista: Bloque
+  D agrega la tab "Visitas", Bloque E "Ofertas", Bloque G "Interesados".
+  El componente `Tabs`/`TabsList`/`TabsTrigger`/`TabsContent`
+  (`components/ui/tabs.tsx`) ya estaba en el proyecto sin usar — primer
+  uso real.
+- Header enriquecido: propietario principal, fecha de captación, días en
+  cartera, última actividad completada — todo calculado a partir de datos
+  ya cargados en la página (sin queries nuevas para esto), más el botón
+  "Agendar visita" reutilizando la ruta `/calendar/new?propertyId=`
+  existente desde la Fase 8.
+- "Resumen" incluye Rendimiento (días en cartera, visitas, precio actual,
+  precio/m² — derivado, sin columna nueva), Historial de precios
+  (nuevo), Propietarios (sin cambios) y Coincidencias (Fase 11, sin
+  cambios) — "interesados"/"propiedades enviadas"/"ofertas" del
+  rendimiento del spec quedan pendientes de los Bloques E/G, como
+  anticipaba el plan original.
+- Migración: `property_price_history` + trigger `security definer`
+  (`properties_log_price_change`, dispara solo `when (old.price is
+distinct from new.price)`) — mismo patrón que `create_organization()`/
+  `handle_new_user()` de la Fase 0. Sin política de insert/update/delete
+  para `authenticated`: la única escritura posible es la del trigger.
+- Real gotcha, no un bug: `Date.now()` llamado directamente en el cuerpo
+  de un Server Component dispara `react-hooks/purity` (regla nueva de
+  React 19/Next 16, no vista en fases anteriores). Se resolvió agregando
+  `daysSinceNow` a `lib/format.ts` (mismo criterio que `formatRelativeTime`,
+  que ya llamaba `Date.now()` dentro de una función nombrada sin
+  problema) — documentado ahí mismo para la próxima vez que haga falta
+  una duración "hasta ahora".
+- Verificado end-to-end contra Supabase real: cambio de precio real vía
+  el formulario de edición → fila de historial creada automáticamente con
+  el % correcto (125.000 → 120.000 = ↓4%, verificado exacto) sin que el
+  código de la app la escriba; un segundo guardado que solo cambia la
+  descripción (confirmado que sí persistió) NO generó una fila nueva —
+  el trigger distingue correctamente cuándo el precio realmente cambió.
+  Tabs cambian de contenido correctamente. Sin errores de consola ni de
+  servidor.
+
+Detalle original del plan:
 
 | Mejora                                                                      | Estado actual                                                                                                                                                                                                                        | Reutilizar                                                     | Modificar                                                                                                                           | Nuevo                                                                                                                                                                 | Riesgo                                                                                                                                                                  |
 | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

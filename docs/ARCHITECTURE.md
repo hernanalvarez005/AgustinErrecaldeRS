@@ -419,3 +419,27 @@ propia. Cualquier Route Handler futuro que se autentique con su propio
 mecanismo (un webhook con firma, otro cron) va a necesitar el mismo
 tratamiento — el comentario junto a la constante aclara esto para que no
 se lea como "sin autenticación".
+
+## Gotcha real encontrado: `Date.now()` directo en un Server Component
+
+`react-hooks/purity` (regla de ESLint que llegó con React 19/Next 16, no
+presente en fases anteriores de este proyecto) marca error cualquier
+llamada directa a una función impura (`Date.now()`, `Math.random()`,...)
+escrita en el cuerpo de una función componente — incluyendo un Server
+Component `async`, que para esta regla cuenta igual que un componente de
+cliente. Pasó al calcular "días en cartera" en la ficha de propiedad (V2
+bloque C): `Date.now()` escrito inline en `PropertyDetailPage` rompía
+`npm run lint`, aunque el build igual compilaba (la regla es de ESLint,
+no de TypeScript).
+
+El fix no es dejar de calcularlo — es no escribirlo inline. Una función
+nombrada aparte (`daysSinceNow` en `lib/format.ts`) que internamente
+llama `Date.now()` no dispara la regla: el lint analiza el cuerpo de la
+función componente en sí, no sigue las llamadas hacia adentro de
+funciones importadas. `formatRelativeTime` (Fase V2 bloque A) ya hacía
+exactamente esto sin problema, por eso pasó desapercibido hasta que
+apareció una segunda necesidad de "tiempo transcurrido hasta ahora". Para
+cualquier cálculo futuro que necesite el instante actual desde un
+Server/Client Component: envolverlo en una función de `lib/`, nunca
+escribir `Date.now()`/`new Date()` (sin argumento) directo en el cuerpo
+del componente.

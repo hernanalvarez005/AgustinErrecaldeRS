@@ -78,3 +78,15 @@ export function formatRelativeTime(value: string | null | undefined) {
   const days = Math.floor(hours / 24);
   return `hace ${days} d`;
 }
+
+/**
+ * Whole days elapsed since a real timestamp, as of now — "días en
+ * cartera", "días desde el último ajuste" (V2 bloque C). A separate named
+ * function, not `Date.now()` inline in a component body: React's purity
+ * lint (`react-hooks/purity`) flags a direct call to an impure global
+ * during render, but not one wrapped in a plain helper like this — same
+ * reason `formatRelativeTime` above already calls `Date.now()` safely.
+ */
+export function daysSinceNow(value: string): number {
+  return Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000);
+}

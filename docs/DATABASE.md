@@ -609,6 +609,26 @@ tanto el formulario completo (`createAcquisition`) como las dos ramas de
 "captación rápida", para que nunca haya dos caminos de escritura para el
 mismo resultado.
 
+## V2 bloque C — `property_price_history`
+
+`id, organization_id, property_id, previous_price, new_price, currency,
+change_reason, changed_by, changed_at`. No es lo mismo que `valuations`
+(Fase 3) — esa es el análisis de tasación previo a publicar (estimado
+min/max/recomendado), esta es el registro real de cambios al
+`properties.price` que efectivamente se publicó. Confirmado por auditoría
+que no existía ninguna estructura equivalente.
+
+Escrita exclusivamente por el trigger `properties_log_price_change`
+(`after update on properties`, `when (old.price is distinct from
+new.price)`) — nunca por código de la aplicación. La función del trigger
+es `security definer` (mismo patrón que `create_organization()`/
+`handle_new_user()` de la Fase 0): corre con los privilegios de quien la
+definió, no de quien hizo el `update`, así que puede escribir en
+`property_price_history` aunque esa tabla no tenga ninguna política de
+`insert` para `authenticated` — la única forma de generar una fila es a
+través del trigger. `change_reason` queda nullable y sin UI que lo cargue
+todavía (no hay un caso de uso construido que lo pida).
+
 ## Índices previstos (más allá de las PK/FK)
 
 `organization_id`, `contact_id`, `property_id`, `status`, `due_at`,

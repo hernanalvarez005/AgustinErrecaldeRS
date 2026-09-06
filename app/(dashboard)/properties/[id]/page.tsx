@@ -14,10 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { buildTimeline, Timeline } from "@/components/contacts/timeline";
 import { ContactSelectField } from "@/components/contacts/contact-select-field";
 import { MatchScoreBadge } from "@/components/matching/match-score-badge";
+import { PriceHistory } from "@/components/properties/price-history";
 import { requireMembership } from "@/lib/auth/session";
 import {
   addNote,
@@ -27,12 +29,13 @@ import {
 } from "@/lib/actions/engagement";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { getSearchMatchesForProperty } from "@/lib/data/matching";
+import { getPropertyPriceHistory } from "@/lib/data/property-price-history";
 import {
   getProperty,
   getPropertyOwners,
   listContactOptions,
 } from "@/lib/data/properties";
-import { formatDate } from "@/lib/format";
+import { daysSinceNow, formatDate, formatEventDay } from "@/lib/format";
 import {
   ACTIVITY_TYPE_LABELS,
   LOGGABLE_ACTIVITY_TYPES,
@@ -58,20 +61,32 @@ export default async function PropertyDetailPage({
   const property = await getProperty(id);
   if (!property) notFound();
 
-  const [owners, contactOptions, notes, tasks, activities, matches] =
-    await Promise.all([
-      getPropertyOwners(id),
-      listContactOptions(membership.organization.id),
-      getNotes({ propertyId: id }),
-      getTasks({ propertyId: id }),
-      getActivities({ propertyId: id }),
-      getSearchMatchesForProperty(membership.organization.id, property),
-    ]);
+  const [
+    owners,
+    contactOptions,
+    notes,
+    tasks,
+    activities,
+    matches,
+    priceHistory,
+  ] = await Promise.all([
+    getPropertyOwners(id),
+    listContactOptions(membership.organization.id),
+    getNotes({ propertyId: id }),
+    getTasks({ propertyId: id }),
+    getActivities({ propertyId: id }),
+    getSearchMatchesForProperty(membership.organization.id, property),
+    getPropertyPriceHistory(id),
+  ]);
 
   const pendingTasks = tasks.filter(
     (t) => t.status === "pending" || t.status === "in_progress",
   );
   const price = formatPrice(property.price, property.currency);
+  const pricePerSquareMeter =
+    property.price && property.total_area
+      ? formatPrice(property.price / property.total_area, property.currency)
+      : null;
   const address = [property.street, property.street_number]
     .filter(Boolean)
     .join(" ");
@@ -81,6 +96,18 @@ export default async function PropertyDetailPage({
   const availableContacts = contactOptions.filter(
     (c) => !owners.some((o) => o.contact_id === c.id),
   );
+  const primaryOwner = owners.find((o) => o.is_primary_contact) ?? owners[0];
+
+  const lastCompletedActivity = activities
+    .filter((a) => a.status === "completed")
+    .sort(
+      (a, b) =>
+        new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime(),
+    )[0];
+  const visitsCount = activities.filter(
+    (a) => a.type === "property_visit",
+  ).length;
+  const daysInPortfolio = daysSinceNow(property.created_at);
 
   const timeline = buildTimeline({ notes, activities, tasks });
 
@@ -115,274 +142,354 @@ export default async function PropertyDetailPage({
               "Sin dirección cargada"}
             {price ? ` · ${price}` : ""}
           </p>
+          <p className="text-muted-foreground text-xs">
+            {primaryOwner ? (
+              <Link
+                href={`/contacts/${primaryOwner.contact_id}`}
+                className="hover:underline"
+              >
+                {primaryOwner.contact.first_name}{" "}
+                {primaryOwner.contact.last_name}
+              </Link>
+            ) : (
+              "Sin propietario"
+            )}
+            {" · Captada el "}
+            {formatDate(property.created_at)}
+            {` · ${daysInPortfolio} ${daysInPortfolio === 1 ? "día" : "días"} en cartera`}
+            {lastCompletedActivity
+              ? ` · Última actividad: ${formatEventDay(lastCompletedActivity.starts_at)}`
+              : ""}
+          </p>
         </div>
+        <Button
+          render={<Link href={`/calendar/new?propertyId=${property.id}`} />}
+          nativeButton={false}
+          variant="outline"
+          size="sm"
+        >
+          Agendar visita
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Propietarios</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {owners.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Sin propietarios asociados.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {owners.map((owner) => (
-                <li
-                  key={owner.contact_id}
-                  className="flex items-center justify-between gap-2 text-sm"
-                >
-                  <div>
-                    <Link
-                      href={`/contacts/${owner.contact_id}`}
-                      className="font-medium hover:underline"
+      <Tabs defaultValue="resumen">
+        <TabsList>
+          <TabsTrigger value="resumen">Resumen</TabsTrigger>
+          <TabsTrigger value="actividad">Actividad</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="resumen" className="space-y-6 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Rendimiento</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+              <div>
+                <dt className="text-muted-foreground">Días en cartera</dt>
+                <dd className="text-lg font-medium">{daysInPortfolio}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Visitas</dt>
+                <dd className="text-lg font-medium">{visitsCount}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Precio actual</dt>
+                <dd className="text-lg font-medium">{price ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Precio/m²</dt>
+                <dd className="text-lg font-medium">
+                  {pricePerSquareMeter ?? "—"}
+                </dd>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Historial de precios</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PriceHistory entries={priceHistory} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Propietarios</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {owners.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  Sin propietarios asociados.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {owners.map((owner) => (
+                    <li
+                      key={owner.contact_id}
+                      className="flex items-center justify-between gap-2 text-sm"
                     >
-                      {owner.contact.first_name} {owner.contact.last_name}
-                    </Link>
-                    <span className="text-muted-foreground">
-                      {owner.is_primary_contact ? " · Principal" : ""}
-                      {owner.ownership_percentage
-                        ? ` · ${owner.ownership_percentage}%`
-                        : ""}
-                    </span>
-                  </div>
-                  <form
-                    action={removeOwner.bind(
-                      null,
-                      property.id,
-                      owner.contact_id,
-                    )}
-                  >
-                    <Button type="submit" size="icon-sm" variant="ghost">
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {availableContacts.length > 0 ? (
-            <form
-              action={addOwner.bind(null, property.id)}
-              className="flex flex-wrap items-end gap-2 border-t pt-4"
-            >
-              <ContactSelectField
-                name="contactId"
-                contacts={availableContacts}
-                className="w-48"
-              />
-              <Input
-                name="ownershipPercentage"
-                type="number"
-                step="0.01"
-                placeholder="% (opcional)"
-                className="w-32"
-              />
-              <label className="flex items-center gap-1.5 text-sm">
-                <input
-                  type="checkbox"
-                  name="isPrimaryContact"
-                  className="border-input size-4 rounded"
-                />
-                Principal
-              </label>
-              <Button type="submit" variant="outline">
-                Agregar propietario
-              </Button>
-            </form>
-          ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Coincidencias</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {matches.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Sin búsquedas activas que coincidan por ahora.
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {matches.map((match) => (
-                <li key={match.search.id} className="space-y-0.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <Link
-                      href={`/searches/${match.search.id}`}
-                      className="text-sm font-medium hover:underline"
-                    >
-                      {match.search.contact_first_name}{" "}
-                      {match.search.contact_last_name}
-                    </Link>
-                    <MatchScoreBadge score={match.score} />
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    {match.summary}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="text-muted-foreground text-xs">
-            Coincidencia calculada por criterios (presupuesto, ubicación,
-            ambientes, superficie, cochera) — no evalúa balcón/patio/ascensor
-            porque esta propiedad todavía no registra esos datos.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-sm">Registrar actividad</CardTitle>
-          <Button
-            render={<Link href={`/calendar/new?propertyId=${property.id}`} />}
-            nativeButton={false}
-            variant="ghost"
-            size="sm"
-          >
-            + Agendar
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <form
-            action={logActivity.bind(null, { propertyId: property.id })}
-            className="flex flex-wrap items-end gap-2"
-          >
-            <Select
-              name="type"
-              defaultValue={LOGGABLE_ACTIVITY_TYPES[0]}
-              items={Object.fromEntries(
-                LOGGABLE_ACTIVITY_TYPES.map((type) => [
-                  type,
-                  ACTIVITY_TYPE_LABELS[type],
-                ]),
+                      <div>
+                        <Link
+                          href={`/contacts/${owner.contact_id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {owner.contact.first_name} {owner.contact.last_name}
+                        </Link>
+                        <span className="text-muted-foreground">
+                          {owner.is_primary_contact ? " · Principal" : ""}
+                          {owner.ownership_percentage
+                            ? ` · ${owner.ownership_percentage}%`
+                            : ""}
+                        </span>
+                      </div>
+                      <form
+                        action={removeOwner.bind(
+                          null,
+                          property.id,
+                          owner.contact_id,
+                        )}
+                      >
+                        <Button type="submit" size="icon-sm" variant="ghost">
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
               )}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LOGGABLE_ACTIVITY_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {ACTIVITY_TYPE_LABELS[type]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              name="description"
-              placeholder="Detalle (opcional)"
-              className="max-w-xs flex-1"
-            />
-            <Button type="submit" variant="outline">
-              Registrar
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Tareas</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {pendingTasks.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Sin tareas pendientes.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {pendingTasks.map((task) => (
-                <li
-                  key={task.id}
-                  className="flex items-center justify-between gap-2 text-sm"
+              {availableContacts.length > 0 ? (
+                <form
+                  action={addOwner.bind(null, property.id)}
+                  className="flex flex-wrap items-end gap-2 border-t pt-4"
                 >
-                  <div>
-                    <span className="font-medium">{task.title}</span>{" "}
-                    <span className="text-muted-foreground">
-                      · {TASK_PRIORITY_LABELS[task.priority]}
-                      {task.due_at ? ` · ${formatDate(task.due_at)}` : ""}
-                    </span>
-                  </div>
-                  <form
-                    action={completeTask.bind(
-                      null,
-                      { propertyId: property.id },
-                      task.id,
-                    )}
-                  >
-                    <Button type="submit" size="sm" variant="ghost">
-                      Completar
-                    </Button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          )}
+                  <ContactSelectField
+                    name="contactId"
+                    contacts={availableContacts}
+                    className="w-48"
+                  />
+                  <Input
+                    name="ownershipPercentage"
+                    type="number"
+                    step="0.01"
+                    placeholder="% (opcional)"
+                    className="w-32"
+                  />
+                  <label className="flex items-center gap-1.5 text-sm">
+                    <input
+                      type="checkbox"
+                      name="isPrimaryContact"
+                      className="border-input size-4 rounded"
+                    />
+                    Principal
+                  </label>
+                  <Button type="submit" variant="outline">
+                    Agregar propietario
+                  </Button>
+                </form>
+              ) : null}
+            </CardContent>
+          </Card>
 
-          <form
-            action={createTask.bind(null, { propertyId: property.id })}
-            className="flex flex-wrap items-end gap-2 border-t pt-4"
-          >
-            <Input
-              name="title"
-              placeholder="Nueva tarea"
-              className="max-w-xs flex-1"
-              required
-            />
-            <Select
-              name="priority"
-              defaultValue="medium"
-              items={TASK_PRIORITY_LABELS}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TASK_PRIORITIES.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {TASK_PRIORITY_LABELS[p]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input name="dueAt" type="date" className="w-40" />
-            <Button type="submit" variant="outline">
-              Agregar
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Coincidencias</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {matches.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  Sin búsquedas activas que coincidan por ahora.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {matches.map((match) => (
+                    <li key={match.search.id} className="space-y-0.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <Link
+                          href={`/searches/${match.search.id}`}
+                          className="text-sm font-medium hover:underline"
+                        >
+                          {match.search.contact_first_name}{" "}
+                          {match.search.contact_last_name}
+                        </Link>
+                        <MatchScoreBadge score={match.score} />
+                      </div>
+                      <p className="text-muted-foreground text-xs">
+                        {match.summary}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="text-muted-foreground text-xs">
+                Coincidencia calculada por criterios (presupuesto, ubicación,
+                ambientes, superficie, cochera) — no evalúa
+                balcón/patio/ascensor porque esta propiedad todavía no registra
+                esos datos.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Notas</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <form
-            action={addNote.bind(null, { propertyId: property.id })}
-            className="space-y-2"
-          >
-            <Textarea name="body" placeholder="Agregar una nota..." required />
-            <Button type="submit" variant="outline">
-              Guardar nota
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+        <TabsContent value="actividad" className="space-y-6 pt-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-sm">Registrar actividad</CardTitle>
+              <Button
+                render={
+                  <Link href={`/calendar/new?propertyId=${property.id}`} />
+                }
+                nativeButton={false}
+                variant="ghost"
+                size="sm"
+              >
+                + Agendar
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <form
+                action={logActivity.bind(null, { propertyId: property.id })}
+                className="flex flex-wrap items-end gap-2"
+              >
+                <Select
+                  name="type"
+                  defaultValue={LOGGABLE_ACTIVITY_TYPES[0]}
+                  items={Object.fromEntries(
+                    LOGGABLE_ACTIVITY_TYPES.map((type) => [
+                      type,
+                      ACTIVITY_TYPE_LABELS[type],
+                    ]),
+                  )}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOGGABLE_ACTIVITY_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {ACTIVITY_TYPE_LABELS[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  name="description"
+                  placeholder="Detalle (opcional)"
+                  className="max-w-xs flex-1"
+                />
+                <Button type="submit" variant="outline">
+                  Registrar
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Timeline</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Timeline entries={timeline} />
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Tareas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {pendingTasks.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  Sin tareas pendientes.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {pendingTasks.map((task) => (
+                    <li
+                      key={task.id}
+                      className="flex items-center justify-between gap-2 text-sm"
+                    >
+                      <div>
+                        <span className="font-medium">{task.title}</span>{" "}
+                        <span className="text-muted-foreground">
+                          · {TASK_PRIORITY_LABELS[task.priority]}
+                          {task.due_at ? ` · ${formatDate(task.due_at)}` : ""}
+                        </span>
+                      </div>
+                      <form
+                        action={completeTask.bind(
+                          null,
+                          { propertyId: property.id },
+                          task.id,
+                        )}
+                      >
+                        <Button type="submit" size="sm" variant="ghost">
+                          Completar
+                        </Button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <form
+                action={createTask.bind(null, { propertyId: property.id })}
+                className="flex flex-wrap items-end gap-2 border-t pt-4"
+              >
+                <Input
+                  name="title"
+                  placeholder="Nueva tarea"
+                  className="max-w-xs flex-1"
+                  required
+                />
+                <Select
+                  name="priority"
+                  defaultValue="medium"
+                  items={TASK_PRIORITY_LABELS}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TASK_PRIORITIES.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {TASK_PRIORITY_LABELS[p]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input name="dueAt" type="date" className="w-40" />
+                <Button type="submit" variant="outline">
+                  Agregar
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Notas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <form
+                action={addNote.bind(null, { propertyId: property.id })}
+                className="space-y-2"
+              >
+                <Textarea
+                  name="body"
+                  placeholder="Agregar una nota..."
+                  required
+                />
+                <Button type="submit" variant="outline">
+                  Guardar nota
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Timeline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Timeline entries={timeline} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
