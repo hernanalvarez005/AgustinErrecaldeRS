@@ -4,18 +4,34 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * Shared across every entity that can have notes/tasks/activities attached
- * (contacts today, properties from Fase 2, more later). Exactly one of
- * these should be set per call — see docs/DATABASE.md on why these are
- * plain nullable FK columns rather than a polymorphic "entity_type" column.
+ * (contacts, properties, acquisitions, more later). Exactly one of these
+ * should be set per call — see docs/DATABASE.md on why these are plain
+ * nullable FK columns rather than a polymorphic "entity_type" column.
  */
-export type EngagementContext = { contactId?: string; propertyId?: string };
+export type EngagementContext = {
+  contactId?: string;
+  propertyId?: string;
+  acquisitionId?: string;
+};
+
+function scopeQuery<T extends { eq: (column: string, value: string) => T }>(
+  query: T,
+  context: EngagementContext,
+): T {
+  let scoped = query;
+  if (context.contactId) scoped = scoped.eq("contact_id", context.contactId);
+  if (context.propertyId) scoped = scoped.eq("property_id", context.propertyId);
+  if (context.acquisitionId)
+    scoped = scoped.eq("acquisition_id", context.acquisitionId);
+  return scoped;
+}
 
 export async function getNotes(context: EngagementContext) {
   const supabase = await createClient();
-  let query = supabase.from("notes").select("id, body, created_at");
-  if (context.contactId) query = query.eq("contact_id", context.contactId);
-  if (context.propertyId) query = query.eq("property_id", context.propertyId);
-
+  const query = scopeQuery(
+    supabase.from("notes").select("id, body, created_at"),
+    context,
+  );
   const { data, error } = await query.order("created_at", { ascending: false });
   if (error) {
     console.error("Failed to load notes:", error.message);
@@ -26,12 +42,12 @@ export async function getNotes(context: EngagementContext) {
 
 export async function getTasks(context: EngagementContext) {
   const supabase = await createClient();
-  let query = supabase
-    .from("tasks")
-    .select("id, title, priority, due_at, status, completed_at");
-  if (context.contactId) query = query.eq("contact_id", context.contactId);
-  if (context.propertyId) query = query.eq("property_id", context.propertyId);
-
+  const query = scopeQuery(
+    supabase
+      .from("tasks")
+      .select("id, title, priority, due_at, status, completed_at"),
+    context,
+  );
   const { data, error } = await query.order("due_at", {
     ascending: true,
     nullsFirst: false,
@@ -45,12 +61,12 @@ export async function getTasks(context: EngagementContext) {
 
 export async function getActivities(context: EngagementContext) {
   const supabase = await createClient();
-  let query = supabase
-    .from("activities")
-    .select("id, type, description, starts_at, status");
-  if (context.contactId) query = query.eq("contact_id", context.contactId);
-  if (context.propertyId) query = query.eq("property_id", context.propertyId);
-
+  const query = scopeQuery(
+    supabase
+      .from("activities")
+      .select("id, type, description, starts_at, status"),
+    context,
+  );
   const { data, error } = await query.order("starts_at", { ascending: false });
   if (error) {
     console.error("Failed to load activities:", error.message);

@@ -12,6 +12,8 @@ import type { EngagementContext } from "@/lib/data/engagement";
 function revalidateContext(context: EngagementContext) {
   if (context.contactId) revalidatePath(`/contacts/${context.contactId}`);
   if (context.propertyId) revalidatePath(`/properties/${context.propertyId}`);
+  if (context.acquisitionId)
+    revalidatePath(`/acquisitions/${context.acquisitionId}`);
 }
 
 export async function addNote(context: EngagementContext, formData: FormData) {
@@ -24,6 +26,7 @@ export async function addNote(context: EngagementContext, formData: FormData) {
     organization_id: membership.organization.id,
     contact_id: context.contactId ?? null,
     property_id: context.propertyId ?? null,
+    acquisition_id: context.acquisitionId ?? null,
     body: parsed.data.body,
   });
   if (error) console.error("Failed to add note:", error.message);
@@ -48,6 +51,7 @@ export async function createTask(
     organization_id: membership.organization.id,
     contact_id: context.contactId ?? null,
     property_id: context.propertyId ?? null,
+    acquisition_id: context.acquisitionId ?? null,
     title: parsed.data.title,
     priority: parsed.data.priority,
     due_at: parsed.data.dueAt
@@ -87,6 +91,7 @@ export async function logActivity(
     organization_id: membership.organization.id,
     contact_id: context.contactId ?? null,
     property_id: context.propertyId ?? null,
+    acquisition_id: context.acquisitionId ?? null,
     type: parsed.data.type,
     description: parsed.data.description ?? null,
     status: "completed",

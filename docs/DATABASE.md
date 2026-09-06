@@ -192,25 +192,61 @@ generalizó (`lib/data/engagement.ts`, `lib/actions/engagement.ts`) para no
 duplicar las cuatro operaciones (notas, tareas, completar tarea, actividad)
 entre `contacts` y `properties`.
 
-## Planificado (Fase 3 en adelante)
+## Implementado (Fase 3)
+
+### `property_acquisitions`
+
+`id, organization_id, property_id fk not null, primary_owner_contact_id fk
+not null, status text check in ('new_lead','contacted','meeting_scheduled',
+'meeting_completed','valuation','proposal_sent','follow_up','won','lost')
+default 'new_lead', origin (mismo enum que `contacts.source`),
+estimated_value numeric, proposed_listing_price numeric, valuation_date,
+meeting_date, next_action_at, lost_reason, notes, created_at, updated_at`.
+Índices sobre `organization_id`, `property_id`, `status`.
+
+`primary_owner_contact_id` duplica algo que también vive en
+`property_owners` (Fase 2) — es intencional: la tarjeta del Kanban necesita
+"con quién estoy negociando esta captación" sin hacer join a
+`property_owners`, y ese contacto no siempre es el mismo que "el"
+propietario principal si la propiedad termina con varios (el contacto de la
+negociación queda fijo al crear la captación). Documentado acá por la regla
+de "datos derivados" (sección de RLS/índices más abajo y docs/ARCHITECTURE.md).
+
+El flujo de creación (`/acquisitions/new`) arranca desde "propietario
+interesado en vender" (ver docs/PRODUCT_SPEC.md), no desde una propiedad ya
+cargada: crea la `property` (mínima, `status='capturing'`), el
+`property_owners` (`is_primary_contact=true`) y la `property_acquisitions`
+en la misma acción de servidor.
+
+### `valuations`
+
+`id, organization_id, property_id fk not null, acquisition_id fk nullable,
+estimated_min_value, estimated_value, estimated_max_value numeric — check
+(estimated_min_value <= estimated_max_value), currency,
+recommended_listing_price, valuation_date date default hoy, notes,
+created_by, created_at`. Índices sobre `property_id`, `acquisition_id`.
+
+### `notes` / `tasks` / `activities`
+
+Ganaron `acquisition_id` (mismo patrón que `property_id` en Fase 2 — ALTER
+TABLE nullable, sin tocar migraciones previas). `lib/data/engagement.ts` y
+`lib/actions/engagement.ts` ahora aceptan `{ contactId, propertyId,
+acquisitionId }` indistintamente.
+
+### Kanban de captaciones
+
+`/acquisitions` usa [`@dnd-kit/core`](https://dndkit.com) para drag & drop
+entre columnas de estado — librería chica (~10kb), mantenida, con soporte
+táctil real (a diferencia del drag & drop nativo de HTML5, que no funciona
+bien en mobile — relevante porque el asesor va a usar esto desde el
+teléfono). Al soltar una tarjeta se actualiza el estado optimísticamente en
+el cliente y se persiste con `updateAcquisitionStatus()`. También hay vista
+tabla (`?view=table`).
+
+## Planificado (Fase 4 en adelante)
 
 Esquema propuesto para el resto del dominio. Se implementa incrementalmente,
 una migración por fase (ver docs/ROADMAP.md), no todo de una vez.
-
-### `property_acquisitions` (Fase 3)
-
-`id, organization_id, property_id fk, primary_owner_contact_id fk, status
-text check in ('new_lead','contacted','meeting_scheduled','meeting_completed',
-'valuation','proposal_sent','follow_up','won','lost'), origin,
-estimated_value numeric, proposed_listing_price numeric, valuation_date,
-meeting_date, next_action_at, lost_reason, notes, created_at, updated_at`.
-
-### `valuations` (Fase 3)
-
-`id, organization_id, property_id fk, acquisition_id fk, estimated_min_value,
-estimated_value, estimated_max_value numeric — check (estimated_min_value <=
-estimated_max_value), currency, recommended_listing_price, valuation_date,
-notes, created_by, created_at`.
 
 ### `property_searches` (Fase 4)
 

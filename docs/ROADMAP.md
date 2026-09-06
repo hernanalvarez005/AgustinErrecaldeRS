@@ -57,10 +57,22 @@ más superficie (ver docs/ARCHITECTURE.md).
 Pendiente de esta fase, movido a después: tests automatizados (mismo
 criterio que Fase 1).
 
-## Fase 3 — Captaciones
+## Fase 3 — Captaciones ✅
 
-- Tablas: `property_acquisitions`, `valuations`.
-- Kanban de captaciones con drag & drop; vista tabla alternativa.
+- Tablas: `property_acquisitions`, `valuations` (+RLS). `notes`/`tasks`/
+  `activities` ganaron `acquisition_id`.
+- `/acquisitions`: Kanban con drag & drop (`@dnd-kit/core`) + vista tabla
+  (`?view=table`); mover una tarjeta actualiza el estado.
+- `/acquisitions/new`: arranca desde "propietario interesado en vender" —
+  crea la propiedad (mínima), el vínculo de propiedad y la captación juntos.
+- `/acquisitions/[id]`: tasaciones (alta + listado), marcar perdida (con
+  motivo opcional), registro de actividad, tareas, notas, timeline.
+- Extraído `components/contacts/contact-select-field.tsx`: picker de
+  contacto reutilizable que evita el bug de shadcn `Select` con una sola
+  opción (ver docs/ARCHITECTURE.md) — ya usado en propiedades y captaciones.
+
+Pendiente de esta fase, movido a después: tests automatizados (mismo
+criterio que Fases 1-2).
 
 ## Fase 4 — Búsquedas
 

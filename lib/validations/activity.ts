@@ -2,16 +2,19 @@ import { z } from "zod";
 
 import type { ActivityType } from "@/types/database.types";
 
-// The quick-log actions exposed from a contact's page. The full type list
-// (notary_meeting, closing, ...) is set by other flows (deals, acquisitions)
-// once those exist — this is deliberately the "I did this with this person"
-// subset, not the whole enum.
+// The quick-log actions exposed from contact/property/acquisition pages.
+// The remaining enum values (notary_meeting, reservation, contract_signing,
+// closing) are set by the deals pipeline (Fase 6) once it exists — those are
+// milestones a deal moves through, not something you log ad hoc.
 export const LOGGABLE_ACTIVITY_TYPES: ActivityType[] = [
   "call",
   "whatsapp",
   "email",
   "meeting",
   "property_visit",
+  "acquisition_visit",
+  "valuation",
+  "follow_up",
   "other",
 ];
 

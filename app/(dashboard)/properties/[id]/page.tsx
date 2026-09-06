@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { buildTimeline, Timeline } from "@/components/contacts/timeline";
+import { ContactSelectField } from "@/components/contacts/contact-select-field";
 import { requireMembership } from "@/lib/auth/session";
 import {
   addNote,
@@ -165,42 +166,11 @@ export default async function PropertyDetailPage({
               action={addOwner.bind(null, property.id)}
               className="flex flex-wrap items-end gap-2 border-t pt-4"
             >
-              {availableContacts.length === 1 ? (
-                // A single-item Select can visually preview the item on open
-                // without committing it on click (Base UI quirk) — with only
-                // one option there's nothing to choose anyway, so skip the
-                // Select and submit it directly.
-                <span className="flex h-8 w-48 items-center rounded-lg border bg-transparent px-2.5 text-sm">
-                  <input
-                    type="hidden"
-                    name="contactId"
-                    value={availableContacts[0].id}
-                  />
-                  {availableContacts[0].first_name}{" "}
-                  {availableContacts[0].last_name}
-                </span>
-              ) : (
-                <Select
-                  name="contactId"
-                  items={Object.fromEntries(
-                    availableContacts.map((c) => [
-                      c.id,
-                      `${c.first_name} ${c.last_name}`,
-                    ]),
-                  )}
-                >
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Elegir contacto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableContacts.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.first_name} {c.last_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <ContactSelectField
+                name="contactId"
+                contacts={availableContacts}
+                className="w-48"
+              />
               <Input
                 name="ownershipPercentage"
                 type="number"

@@ -92,6 +92,17 @@ export type PropertyStatus =
   | "lost"
   | "archived";
 
+export type AcquisitionStatus =
+  | "new_lead"
+  | "contacted"
+  | "meeting_scheduled"
+  | "meeting_completed"
+  | "valuation"
+  | "proposal_sent"
+  | "follow_up"
+  | "won"
+  | "lost";
+
 export interface Database {
   public: {
     Tables: {
@@ -247,6 +258,7 @@ export interface Database {
           body: string;
           contact_id: string | null;
           property_id: string | null;
+          acquisition_id: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -257,6 +269,7 @@ export interface Database {
           body: string;
           contact_id?: string | null;
           property_id?: string | null;
+          acquisition_id?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -272,6 +285,7 @@ export interface Database {
           description: string | null;
           contact_id: string | null;
           property_id: string | null;
+          acquisition_id: string | null;
           priority: TaskPriority;
           due_at: string | null;
           status: TaskStatus;
@@ -288,6 +302,7 @@ export interface Database {
           description?: string | null;
           contact_id?: string | null;
           property_id?: string | null;
+          acquisition_id?: string | null;
           priority?: TaskPriority;
           due_at?: string | null;
           status?: TaskStatus;
@@ -309,6 +324,7 @@ export interface Database {
           description: string | null;
           contact_id: string | null;
           property_id: string | null;
+          acquisition_id: string | null;
           starts_at: string;
           ends_at: string | null;
           status: ActivityStatus;
@@ -327,6 +343,7 @@ export interface Database {
           description?: string | null;
           contact_id?: string | null;
           property_id?: string | null;
+          acquisition_id?: string | null;
           starts_at?: string;
           ends_at?: string | null;
           status?: ActivityStatus;
@@ -440,6 +457,80 @@ export interface Database {
         >;
         Relationships: [];
       };
+      property_acquisitions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          property_id: string;
+          primary_owner_contact_id: string;
+          status: AcquisitionStatus;
+          origin: ContactSource | null;
+          estimated_value: number | null;
+          proposed_listing_price: number | null;
+          valuation_date: string | null;
+          meeting_date: string | null;
+          next_action_at: string | null;
+          lost_reason: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          property_id: string;
+          primary_owner_contact_id: string;
+          status?: AcquisitionStatus;
+          origin?: ContactSource | null;
+          estimated_value?: number | null;
+          proposed_listing_price?: number | null;
+          valuation_date?: string | null;
+          meeting_date?: string | null;
+          next_action_at?: string | null;
+          lost_reason?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["property_acquisitions"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      valuations: {
+        Row: {
+          id: string;
+          organization_id: string;
+          property_id: string;
+          acquisition_id: string | null;
+          estimated_min_value: number | null;
+          estimated_value: number | null;
+          estimated_max_value: number | null;
+          currency: "ARS" | "USD" | null;
+          recommended_listing_price: number | null;
+          valuation_date: string;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          property_id: string;
+          acquisition_id?: string | null;
+          estimated_min_value?: number | null;
+          estimated_value?: number | null;
+          estimated_max_value?: number | null;
+          currency?: "ARS" | "USD" | null;
+          recommended_listing_price?: number | null;
+          valuation_date?: string;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["valuations"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       contact_overview: {
@@ -488,3 +579,6 @@ export type PropertyOverview =
   Database["public"]["Views"]["property_overview"]["Row"];
 export type PropertyOwner =
   Database["public"]["Tables"]["property_owners"]["Row"];
+export type Acquisition =
+  Database["public"]["Tables"]["property_acquisitions"]["Row"];
+export type Valuation = Database["public"]["Tables"]["valuations"]["Row"];
