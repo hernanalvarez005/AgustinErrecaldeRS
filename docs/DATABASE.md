@@ -650,6 +650,34 @@ que haya que interceptar.
 reabrir el diálogo sobre una visita ya finalizada edita el feedback en
 vez de crear una fila duplicada.
 
+## V2 bloque E — `offers`
+
+`id, organization_id, property_id, contact_id, deal_id, amount, currency,
+status, conditions, expiration_date, parent_offer_id, notes, created_by,
+created_at, updated_at`. RLS estándar (`for all`, mismo patrón de
+`organization_id in (select private.user_org_ids())` de siempre).
+
+No es lo mismo que `deals` (Fase 6): `deals` es la operación en curso,
+`offers` es lo que pasa antes — una propuesta de precio sobre una
+propiedad. `deal_id` es nullable y se completa recién cuando la oferta se
+acepta (`acceptOfferAndCreateDeal`, `app/(dashboard)/properties/
+actions.ts`), momento en el que también se decide si crear una operación
+nueva o vincular una ya existente para esa propiedad
+(`getOpenDealForProperty`) — nunca se crean dos operaciones para la misma
+negociación.
+
+Las contraofertas son filas nuevas encadenadas por `parent_offer_id`,
+nunca un `update` del monto de la fila anterior — el historial completo
+de la negociación queda intacto. Al crear una contraoferta, la oferta
+padre pasa a `status = 'counter_offered'` para que quede claro cuál sigue
+"viva" (la más nueva que no fue ella misma contraofertada).
+
+`contact_id` se mantiene igual en toda la cadena de una negociación (la
+contraparte con la que se negocia) — no se modela "de qué lado" vino cada
+contraoferta; es un dato que el asesor ya tiene con solo leer fecha/monto,
+y agregar una columna para esto sin un caso de uso que lo pidiera hubiera
+sido anticipar de más.
+
 ## Índices previstos (más allá de las PK/FK)
 
 `organization_id`, `contact_id`, `property_id`, `status`, `due_at`,

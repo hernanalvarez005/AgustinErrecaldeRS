@@ -283,7 +283,40 @@ tiene a lo sumo un feedback, y así un `upsert` simple alcanza para
 
 ---
 
-## Bloque E — Ofertas
+## Bloque E — Ofertas ✅ implementado
+
+Implementado tal como se planeó, con dos decisiones tomadas durante la
+implementación:
+
+- **Sin columna "de qué lado vino la contraoferta":** `offers.contact_id`
+  se mantiene igual (la contraparte de la negociación) a lo largo de toda
+  la cadena — el spec mostraba nombres distintos en su ejemplo
+  ("Propietario" contraofertando), pero modelar eso hubiera pedido un
+  segundo contacto por fila sin que ningún flujo real de este bloque lo
+  necesite. Documentado como simplificación deliberada.
+- **Formularios que devuelven `{error}`, no `<form action>` directo:**
+  `acceptOfferAndCreateDeal` puede fallar (propiedad sin propietario
+  cargado) y necesita mostrar ese error — así que, a diferencia de
+  `createOffer` (simple, sin reporte de error, mismo criterio que
+  `createTask`/`addOwner`), su botón "Aceptar" vive en
+  `components/offers/offer-thread.tsx` (client) y llama la action con
+  `startTransition`, mismo patrón que `convert-lead-form.tsx` — un
+  `<form action>` no puede apuntar a una función que devuelve algo
+  distinto de `void`.
+- `acceptOfferAndCreateDeal` reutiliza el propietario principal de
+  `property_owners` como `seller_contact_id` y el `operation_type` de la
+  propiedad como `deal_type` — nunca le pide al asesor datos que ya están
+  cargados.
+- Verificado end-to-end contra Supabase real: oferta inicial → contraoferta
+  (la original pasa a "Contraofertada" automáticamente, nunca se sobrescribe
+  el monto) → aceptar crea una operación con comprador/vendedor/precio
+  correctos y estado inicial "Oferta"; una SEGUNDA oferta aceptada sobre la
+  misma propiedad se vinculó a la operación ya existente en vez de crear una
+  segunda (confirmado por consulta directa: 1 sola fila en `deals`, ambas
+  ofertas aceptadas apuntando al mismo `deal_id`). Sin errores de consola ni
+  de servidor.
+
+Detalle original del plan:
 
 | Mejora                                        | Estado actual                                                                                                                                                                                                                     | Reutilizar                                                        | Modificar                                                                                                                                                                            | Nuevo                                                                                                        | Riesgo                                                                                                                                                             |
 | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

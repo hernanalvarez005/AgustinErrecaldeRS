@@ -2,7 +2,11 @@ import { Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { addOwner, removeOwner } from "@/app/(dashboard)/properties/actions";
+import {
+  addOwner,
+  createOffer,
+  removeOwner,
+} from "@/app/(dashboard)/properties/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +24,7 @@ import { buildTimeline, Timeline } from "@/components/contacts/timeline";
 import { ContactSelectField } from "@/components/contacts/contact-select-field";
 import { VisitFeedbackList } from "@/components/activities/visit-feedback-list";
 import { MatchScoreBadge } from "@/components/matching/match-score-badge";
+import { OfferThread } from "@/components/offers/offer-thread";
 import { PriceHistory } from "@/components/properties/price-history";
 import { requireMembership } from "@/lib/auth/session";
 import {
@@ -30,6 +35,7 @@ import {
 } from "@/lib/actions/engagement";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { getSearchMatchesForProperty } from "@/lib/data/matching";
+import { getOffersForProperty } from "@/lib/data/offers";
 import { getPropertyPriceHistory } from "@/lib/data/property-price-history";
 import {
   getProperty,
@@ -72,6 +78,7 @@ export default async function PropertyDetailPage({
     matches,
     priceHistory,
     visitFeedback,
+    offers,
   ] = await Promise.all([
     getPropertyOwners(id),
     listContactOptions(membership.organization.id),
@@ -81,6 +88,7 @@ export default async function PropertyDetailPage({
     getSearchMatchesForProperty(membership.organization.id, property),
     getPropertyPriceHistory(id),
     getVisitFeedbackForProperty(id),
+    getOffersForProperty(id),
   ]);
 
   const pendingTasks = tasks.filter(
@@ -180,6 +188,7 @@ export default async function PropertyDetailPage({
         <TabsList>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
           <TabsTrigger value="visitas">Visitas</TabsTrigger>
+          <TabsTrigger value="ofertas">Ofertas</TabsTrigger>
           <TabsTrigger value="actividad">Actividad</TabsTrigger>
         </TabsList>
 
@@ -353,6 +362,75 @@ export default async function PropertyDetailPage({
                 }))}
                 emptyMessage="Sin visitas con feedback registrado todavía."
               />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ofertas" className="space-y-6 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Ofertas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <OfferThread propertyId={property.id} offers={offers} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Registrar oferta</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form
+                action={createOffer.bind(null, property.id)}
+                className="flex flex-wrap items-end gap-2"
+              >
+                <ContactSelectField
+                  name="contactId"
+                  contacts={contactOptions}
+                  className="w-48"
+                />
+                <Input
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  placeholder="Monto"
+                  required
+                  className="w-32"
+                />
+                <Select
+                  name="currency"
+                  defaultValue="USD"
+                  items={{ ARS: "ARS", USD: "USD" }}
+                >
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ARS">ARS</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  name="expirationDate"
+                  type="date"
+                  className="w-40"
+                  placeholder="Vencimiento"
+                />
+                <Input
+                  name="conditions"
+                  placeholder="Condiciones (opcional)"
+                  className="max-w-xs flex-1"
+                />
+                <Textarea
+                  name="notes"
+                  placeholder="Notas (opcional)"
+                  className="w-full"
+                />
+                <Button type="submit" variant="outline">
+                  Registrar oferta
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>

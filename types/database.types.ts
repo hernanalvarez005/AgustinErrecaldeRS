@@ -156,6 +156,14 @@ export type VisitInterestLevel =
 export type VisitPricePerception = "low" | "fair" | "high";
 export type VisitWantsToProceed = "yes" | "no" | "thinking";
 
+export type OfferStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "counter_offered"
+  | "withdrawn"
+  | "expired";
+
 export interface Database {
   public: {
     Tables: {
@@ -664,6 +672,44 @@ export interface Database {
         >;
         Relationships: [];
       };
+      offers: {
+        Row: {
+          id: string;
+          organization_id: string;
+          property_id: string;
+          contact_id: string;
+          deal_id: string | null;
+          amount: number;
+          currency: "ARS" | "USD";
+          status: OfferStatus;
+          conditions: string | null;
+          expiration_date: string | null;
+          parent_offer_id: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          property_id: string;
+          contact_id: string;
+          deal_id?: string | null;
+          amount: number;
+          currency: "ARS" | "USD";
+          status?: OfferStatus;
+          conditions?: string | null;
+          expiration_date?: string | null;
+          parent_offer_id?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["offers"]["Insert"]>;
+        Relationships: [];
+      };
       property_searches: {
         Row: {
           id: string;
@@ -940,6 +986,7 @@ export type PropertyPriceHistoryEntry =
   Database["public"]["Tables"]["property_price_history"]["Row"];
 export type VisitFeedback =
   Database["public"]["Tables"]["visit_feedback"]["Row"];
+export type Offer = Database["public"]["Tables"]["offers"]["Row"];
 export type PropertySearch =
   Database["public"]["Tables"]["property_searches"]["Row"];
 export type SearchOverview =
