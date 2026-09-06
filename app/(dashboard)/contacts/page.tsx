@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { requireMembership } from "@/lib/auth/session";
 import { listContacts } from "@/lib/data/contacts";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatEventDay } from "@/lib/format";
 import { CONTACT_ROLE_LABELS, CONTACT_ROLES } from "@/lib/validations/contact";
 import type { ContactRole } from "@/types/database.types";
 
@@ -135,7 +135,7 @@ export default async function ContactsPage({
                     {contact.phone || contact.email || "—"}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {formatDate(contact.last_interaction_at) ?? "—"}
+                    {formatEventDay(contact.last_interaction_at) ?? "—"}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {formatDate(contact.next_action_at) ?? "—"}

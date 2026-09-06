@@ -198,3 +198,54 @@ activationConstraint: { distance: 8 } })` un click real (sin mover el
 Los tres fixes están en `components/acquisitions/kanban-board.tsx`. Si se
 arma otro `DndContext` (Fase 6, operaciones), aplicar los tres desde el
 principio en vez de redescubrirlos.
+
+## Gotcha verificado: fechas "sin hora" mostradas un día antes (timezone)
+
+Encontrado probando `/searches/[id]` en vivo (Fase 4): se creó una tarea con
+`due_at` = 9 de octubre (elegido con un `<input type="date">`) y la UI la
+mostró como **"08-oct"**.
+
+Causa raíz, en dos partes:
+
+1. `<input type="date">` entrega un string sin hora ni timezone
+   (`"2026-10-09"`). `new Date("2026-10-09")` lo interpreta como **medianoche
+   UTC** (regla del spec de ECMAScript: un string de solo fecha es UTC; un
+   string de fecha+hora sin zona es hora local — son reglas distintas y es
+   fácil pisarlas). `lib/actions/engagement.ts` guarda ese `.toISOString()`
+   tal cual en `due_at` (`timestamptz`), lo cual es correcto — el problema
+   está en cómo se vuelve a mostrar.
+2. `lib/format.ts` llamaba a `.toLocaleDateString("es-AR", {...})` **sin
+   `timeZone`**, así que Node convierte el instante UTC a la zona horaria
+   _implícita del proceso_ (la del sistema donde corre `next dev`/el
+   servidor) antes de extraer día/mes. Cualquier zona detrás de UTC —
+   Argentina incluida, UTC-3 — hace que medianoche UTC del día 9 caiga en
+   la noche del día 8 hora local. Mismo bug harían ver un valor distinto
+   en local (según el TZ de la máquina) que en Vercel (UTC).
+
+Fix aplicado en `lib/format.ts`: se separó el helper en tres funciones con
+zona horaria **siempre explícita**, nunca implícita:
+
+- `formatDate` — para valores que son una fecha de calendario sin hora real
+  (`due_at` puesto por un `<input type="date">`, y columnas `date` nativas
+  como `valuations.valuation_date`). Formatea con `timeZone: "UTC"` a
+  propósito, porque así es como se escribieron: sirve para no correr la
+  fecha ni un día, en ningún entorno.
+- `formatEventDay` — para un timestamp real (`last_interaction_at`, que sale
+  de `max(activities.starts_at)`) que se trunca a "día" para una columna de
+  listado. Acá sí hay que usar la zona horaria del negocio
+  (`America/Argentina/Buenos_Aires`), no UTC: una actividad registrada a las
+  22:59 en Argentina es 01:59 UTC del día siguiente, y mostrarla con la
+  regla de `formatDate` la haría aparecer un día adelantada. Verificado en
+  vivo: antes del fix, "Última interacción" mostraba "06-sept" para una
+  llamada registrada el "05-sept" a las 22:59.
+- `formatDateTime` — para timestamps con hora visible (línea de tiempo de
+  actividades/notas). También fijo a `America/Argentina/Buenos_Aires`, para
+  que dev (timezone de la máquina) y prod (Vercel, UTC) muestren la misma
+  hora para el mismo instante.
+
+Regla para fases futuras (Fase 9, sincronización con Google Calendar, va a
+tocar esto de nuevo): nunca dejar timezone implícita en un `toLocaleString`/
+`toLocaleDateString` del lado servidor. Si el valor es "una fecha que alguien
+eligió sin hora", va con `formatDate` (UTC). Si es "un momento real que
+pasó o va a pasar", va con `formatDateTime`/`formatEventDay`
+(timezone del negocio).
