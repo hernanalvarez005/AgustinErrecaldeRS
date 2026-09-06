@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { buildTimeline, Timeline } from "@/components/contacts/timeline";
 import { ContactSelectField } from "@/components/contacts/contact-select-field";
+import { VisitFeedbackList } from "@/components/activities/visit-feedback-list";
 import { MatchScoreBadge } from "@/components/matching/match-score-badge";
 import { PriceHistory } from "@/components/properties/price-history";
 import { requireMembership } from "@/lib/auth/session";
@@ -35,6 +36,7 @@ import {
   getPropertyOwners,
   listContactOptions,
 } from "@/lib/data/properties";
+import { getVisitFeedbackForProperty } from "@/lib/data/visit-feedback";
 import { daysSinceNow, formatDate, formatEventDay } from "@/lib/format";
 import {
   ACTIVITY_TYPE_LABELS,
@@ -69,6 +71,7 @@ export default async function PropertyDetailPage({
     activities,
     matches,
     priceHistory,
+    visitFeedback,
   ] = await Promise.all([
     getPropertyOwners(id),
     listContactOptions(membership.organization.id),
@@ -77,6 +80,7 @@ export default async function PropertyDetailPage({
     getActivities({ propertyId: id }),
     getSearchMatchesForProperty(membership.organization.id, property),
     getPropertyPriceHistory(id),
+    getVisitFeedbackForProperty(id),
   ]);
 
   const pendingTasks = tasks.filter(
@@ -175,6 +179,7 @@ export default async function PropertyDetailPage({
       <Tabs defaultValue="resumen">
         <TabsList>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
+          <TabsTrigger value="visitas">Visitas</TabsTrigger>
           <TabsTrigger value="actividad">Actividad</TabsTrigger>
         </TabsList>
 
@@ -329,6 +334,25 @@ export default async function PropertyDetailPage({
                 balcón/patio/ascensor porque esta propiedad todavía no registra
                 esos datos.
               </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="visitas" className="pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Visitas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <VisitFeedbackList
+                items={visitFeedback.map((v) => ({
+                  ...v,
+                  label: v.contact
+                    ? `${v.contact.first_name} ${v.contact.last_name}`
+                    : "Visitante",
+                }))}
+                emptyMessage="Sin visitas con feedback registrado todavía."
+              />
             </CardContent>
           </Card>
         </TabsContent>

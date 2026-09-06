@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { updateEventStatus } from "@/app/(dashboard)/calendar/actions";
 import { MonthGrid } from "@/components/calendar/month-grid";
+import { VisitFeedbackDialog } from "@/components/activities/visit-feedback-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireMembership } from "@/lib/auth/session";
@@ -72,11 +73,16 @@ function EventRow({ event }: { event: CalendarEvent }) {
       </div>
       {event.status === "scheduled" ? (
         <div className="flex shrink-0 gap-1">
-          <form action={updateEventStatus.bind(null, event.id, "completed")}>
-            <Button type="submit" size="sm" variant="ghost">
-              Completar
-            </Button>
-          </form>
+          {event.type === "property_visit" ||
+          event.type === "acquisition_visit" ? (
+            <VisitFeedbackDialog activityId={event.id} />
+          ) : (
+            <form action={updateEventStatus.bind(null, event.id, "completed")}>
+              <Button type="submit" size="sm" variant="ghost">
+                Completar
+              </Button>
+            </form>
+          )}
           <form action={updateEventStatus.bind(null, event.id, "cancelled")}>
             <Button type="submit" size="sm" variant="ghost">
               Cancelar

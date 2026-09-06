@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { buildTimeline, Timeline } from "@/components/contacts/timeline";
+import { VisitFeedbackList } from "@/components/activities/visit-feedback-list";
 import {
   addNote,
   completeTask,
@@ -24,6 +25,7 @@ import {
 import { getContact, getContactRoles } from "@/lib/data/contacts";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { listSearchesByContact } from "@/lib/data/searches";
+import { getVisitFeedbackForContact } from "@/lib/data/visit-feedback";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { toWhatsAppLink } from "@/lib/phone";
 import {
@@ -40,7 +42,7 @@ export default async function ContactDetailPage({
 }: PageProps<"/contacts/[id]">) {
   const { id } = await params;
 
-  const [contact, roles, searches, notes, tasks, activities] =
+  const [contact, roles, searches, notes, tasks, activities, visitFeedback] =
     await Promise.all([
       getContact(id),
       getContactRoles(id),
@@ -48,6 +50,7 @@ export default async function ContactDetailPage({
       getNotes({ contactId: id }),
       getTasks({ contactId: id }),
       getActivities({ contactId: id }),
+      getVisitFeedbackForContact(id),
     ]);
 
   if (!contact) notFound();
@@ -191,6 +194,21 @@ export default async function ContactDetailPage({
               ))}
             </ul>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Visitas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <VisitFeedbackList
+            items={visitFeedback.map((v) => ({
+              ...v,
+              label: v.property_title ?? "Propiedad",
+            }))}
+            emptyMessage="Sin visitas con feedback registrado todavía."
+          />
         </CardContent>
       </Card>
 

@@ -207,7 +207,43 @@ No duplica eventos porque solo dispara cuando el valor realmente cambia
 
 ---
 
-## Bloque D — Visitas (feedback)
+## Bloque D — Visitas (feedback) ✅ implementado
+
+Implementado tal como se planeó, con la tab "Visitas" agregada a la
+ficha de propiedad (Bloque C había dejado el hueco a propósito):
+
+- "Finalizar visita" reemplaza el botón "Completar" únicamente para
+  activities `property_visit`/`acquisition_visit` en estado `scheduled`
+  (`app/(dashboard)/calendar/page.tsx` — el resto de los tipos de evento
+  siguen usando `updateEventStatus` sin cambios). Abre
+  `components/ui/dialog.tsx` — primer uso real de ese componente (antes
+  solo lo usaban internamente el sidebar/command palette).
+- `finalizeVisit` (`app/(dashboard)/calendar/actions.ts`) hace las tres
+  cosas en un solo paso — completar la activity, guardar el feedback
+  (`upsert` por `activity_id`, así reabrir el diálogo sobre una visita ya
+  finalizada edita en vez de duplicar), y crear la task de seguimiento
+  opcional con el mismo contexto (contact/property/etc.) que la visita —
+  nunca un sistema de tareas paralelo.
+- "Visitas" visible desde la ficha de propiedad (tab nueva, con contenido
+  real esta vez) y desde la ficha de cliente (card nueva) —
+  `lib/data/visit-feedback.ts` resuelve ambas direcciones con el mismo
+  patrón de 2 consultas + Map que el resto de `lib/data/*` (no un embed de
+  PostgREST, que nada más en este proyecto usa).
+- Migración: `visit_feedback`, `unique (activity_id)`, RLS estándar (a
+  diferencia de `property_price_history`, esta sí la escribe la app
+  directamente — no hace falta un trigger, el evento que la dispara es
+  una acción explícita del asesor, no un cambio de columna que hay que
+  interceptar).
+- Verificado end-to-end contra Supabase real: finalizar una visita
+  agendada guarda el feedback completo (nivel de interés, ambas
+  percepciones, comentarios) Y crea la task de seguimiento con
+  contact_id + property_id correctos en un solo submit; la activity pasa
+  a "Realizado"; el feedback aparece tanto en la tab Visitas de la
+  propiedad como en la card Visitas del cliente, y la "próxima acción" /
+  "última interacción" del cliente reflejan la visita y la task nuevas.
+  Sin errores de consola ni de servidor.
+
+Detalle original del plan:
 
 | Mejora                                                                                  | Estado actual                                                                                                                          | Reutilizar                                           | Modificar                                                                                                                       | Nuevo                                            | Riesgo               |
 | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------- |

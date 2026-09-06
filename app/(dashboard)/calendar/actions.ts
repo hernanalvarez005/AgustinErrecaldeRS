@@ -17,6 +17,7 @@ import {
   calendarEventSchema,
   CALENDAR_EVENT_STATUSES,
 } from "@/lib/validations/calendar";
+import { visitFeedbackSchema } from "@/lib/validations/visit-feedback";
 import type { ActivityStatus, ActivityType } from "@/types/database.types";
 
 const DEFAULT_EVENT_DURATION_MS = 60 * 60 * 1000; // Google requires an end; default to 1h when the advisor didn't set one.
@@ -250,4 +251,104 @@ export async function updateEventStatus(eventId: string, status: string) {
 
   revalidatePath("/calendar");
   revalidatePath("/today");
+}
+
+/**
+ * "Finalizar visita" (V2 bloque D): marks the visit's activity completed
+ * and saves its feedback in one step — the two are never split, an
+ * advisor closing out a visit shouldn't have to remember a second action.
+ * Optionally creates a follow-up task carrying the same context
+ * (contact/property/etc.) as the visit itself, same "no separate task
+ * system" rule as everywhere else in the app.
+ */
+export async function finalizeVisit(
+  activityId: string,
+  formData: FormData,
+): Promise<{ error: string } | void> {
+  const membership = await requireMembership();
+  const parsed = visitFeedbackSchema.safeParse({
+    interestLevel: formData.get("interestLevel"),
+    positiveFeedback: formData.get("positiveFeedback"),
+    negativeFeedback: formData.get("negativeFeedback"),
+    pricePerception: formData.get("pricePerception"),
+    wantsToProceed: formData.get("wantsToProceed"),
+    notes: formData.get("notes"),
+    followUpTitle: formData.get("followUpTitle"),
+    followUpDueAt: formData.get("followUpDueAt"),
+  });
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Revisá los datos ingresados.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data: activity, error: activityError } = await supabase
+    .from("activities")
+    .select(
+      "id, contact_id, property_id, acquisition_id, search_id, lead_id, deal_id",
+    )
+    .eq("id", activityId)
+    .single();
+  if (activityError || !activity) {
+    console.error(
+      "Failed to load activity for visit feedback:",
+      activityError?.message,
+    );
+    return { error: "No pudimos encontrar la visita. Intentá nuevamente." };
+  }
+
+  const { error: statusError } = await supabase
+    .from("activities")
+    .update({ status: "completed" })
+    .eq("id", activityId);
+  if (statusError) {
+    console.error("Failed to complete visit activity:", statusError.message);
+  }
+
+  const { error: feedbackError } = await supabase.from("visit_feedback").upsert(
+    {
+      organization_id: membership.organization.id,
+      activity_id: activityId,
+      interest_level: parsed.data.interestLevel ?? null,
+      positive_feedback: parsed.data.positiveFeedback ?? null,
+      negative_feedback: parsed.data.negativeFeedback ?? null,
+      price_perception: parsed.data.pricePerception ?? null,
+      wants_to_proceed: parsed.data.wantsToProceed ?? null,
+      notes: parsed.data.notes ?? null,
+    },
+    { onConflict: "activity_id" },
+  );
+  if (feedbackError) {
+    console.error("Failed to save visit feedback:", feedbackError.message);
+    return { error: "No pudimos guardar el feedback. Intentá nuevamente." };
+  }
+
+  if (parsed.data.followUpTitle) {
+    const { error: taskError } = await supabase.from("tasks").insert({
+      organization_id: membership.organization.id,
+      title: parsed.data.followUpTitle,
+      due_at: parsed.data.followUpDueAt
+        ? new Date(parsed.data.followUpDueAt).toISOString()
+        : null,
+      contact_id: activity.contact_id,
+      property_id: activity.property_id,
+      acquisition_id: activity.acquisition_id,
+      search_id: activity.search_id,
+      lead_id: activity.lead_id,
+      deal_id: activity.deal_id,
+    });
+    if (taskError) {
+      console.error(
+        "Failed to create visit follow-up task:",
+        taskError.message,
+      );
+    }
+  }
+
+  revalidatePath("/calendar");
+  revalidatePath("/today");
+  if (activity.contact_id) revalidatePath(`/contacts/${activity.contact_id}`);
+  if (activity.property_id)
+    revalidatePath(`/properties/${activity.property_id}`);
 }

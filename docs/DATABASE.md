@@ -629,6 +629,27 @@ definió, no de quien hizo el `update`, así que puede escribir en
 través del trigger. `change_reason` queda nullable y sin UI que lo cargue
 todavía (no hay un caso de uso construido que lo pida).
 
+## V2 bloque D — `visit_feedback`
+
+`id, organization_id, activity_id, interest_level, positive_feedback,
+negative_feedback, price_perception, wants_to_proceed, notes, created_by,
+created_at, updated_at`, `unique (activity_id)`. No se agregó ninguna
+columna a `activities` — `property_visit`/`acquisition_visit` (Fase 1) ya
+representan correctamente el evento; esto es solo la estructura de
+feedback que un subconjunto de tipos de actividad necesita, separada para
+no llenar `activities` de columnas que no aplican al resto.
+
+A diferencia de `property_price_history` (Bloque C), esta tabla SÍ la
+escribe la aplicación directamente (RLS estándar, `for all` con el mismo
+patrón `organization_id in (select private.user_org_ids())` de siempre) —
+no hace falta un trigger porque lo que la dispara es una acción explícita
+del asesor ("Finalizar visita"), no un cambio de columna en otra tabla
+que haya que interceptar.
+
+`unique (activity_id)` + `upsert` desde `finalizeVisit` significa que
+reabrir el diálogo sobre una visita ya finalizada edita el feedback en
+vez de crear una fila duplicada.
+
 ## Índices previstos (más allá de las PK/FK)
 
 `organization_id`, `contact_id`, `property_id`, `status`, `due_at`,
