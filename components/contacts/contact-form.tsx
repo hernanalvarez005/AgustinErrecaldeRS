@@ -41,8 +41,12 @@ export function ContactForm({
   initialRoles?: ContactRole[];
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  // A ref, not state: the "create anyway" button calls requestSubmit()
+  // synchronously right after setting this, and a new submit event fires
+  // before React re-renders — a state flag would still read stale (false)
+  // in that immediately-following handleSubmit call.
+  const confirmedRef = useRef(false);
   const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
-  const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -51,7 +55,7 @@ export function ContactForm({
     setError(null);
     const formData = new FormData(event.currentTarget);
 
-    if (!confirmed) {
+    if (!confirmedRef.current) {
       const found = await checkContactDuplicates(formData);
       if (found.length > 0) {
         setDuplicates(found);
@@ -109,12 +113,12 @@ export function ContactForm({
               size="sm"
               variant="outline"
               onClick={() => {
-                setConfirmed(true);
+                confirmedRef.current = true;
                 setDuplicates([]);
                 formRef.current?.requestSubmit();
               }}
             >
-              Crear de todas formas
+              {contact ? "Guardar de todas formas" : "Crear de todas formas"}
             </Button>
             <Button
               type="button"
@@ -198,7 +202,11 @@ export function ContactForm({
         </div>
         <div className="space-y-2">
           <Label htmlFor="source">Origen</Label>
-          <Select name="source" defaultValue={contact?.source ?? undefined}>
+          <Select
+            name="source"
+            defaultValue={contact?.source ?? undefined}
+            items={CONTACT_SOURCE_LABELS}
+          >
             <SelectTrigger id="source" className="w-full">
               <SelectValue placeholder="¿Cómo llegó?" />
             </SelectTrigger>

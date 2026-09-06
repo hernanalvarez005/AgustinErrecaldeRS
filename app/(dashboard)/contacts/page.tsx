@@ -52,7 +52,7 @@ export default async function ContactsPage({
             {contacts.length} {contacts.length === 1 ? "contacto" : "contactos"}
           </p>
         </div>
-        <Button render={<Link href="/contacts/new" />}>
+        <Button render={<Link href="/contacts/new" />} nativeButton={false}>
           <Plus />
           Contacto
         </Button>
@@ -65,7 +65,11 @@ export default async function ContactsPage({
           placeholder="Buscar por nombre, teléfono o email..."
           className="max-w-xs"
         />
-        <Select name="role" defaultValue={role ?? "all"}>
+        <Select
+          name="role"
+          defaultValue={role ?? "all"}
+          items={{ all: "Todos los roles", ...CONTACT_ROLE_LABELS }}
+        >
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Todos los roles" />
           </SelectTrigger>
@@ -90,7 +94,7 @@ export default async function ContactsPage({
             Creá tu primer contacto para empezar a registrar búsquedas, tareas y
             actividades.
           </p>
-          <Button render={<Link href="/contacts/new" />}>
+          <Button render={<Link href="/contacts/new" />} nativeButton={false}>
             <Plus />
             Nuevo contacto
           </Button>

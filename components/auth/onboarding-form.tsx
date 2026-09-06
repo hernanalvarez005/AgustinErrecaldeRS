@@ -69,7 +69,11 @@ export function OnboardingForm() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="currency">Moneda preferida</Label>
-              <Select name="currency" defaultValue="ARS">
+              <Select
+                name="currency"
+                defaultValue="ARS"
+                items={{ ARS: "Peso argentino (ARS)", USD: "Dólar (USD)" }}
+              >
                 <SelectTrigger id="currency" className="w-full">
                   <SelectValue />
                 </SelectTrigger>

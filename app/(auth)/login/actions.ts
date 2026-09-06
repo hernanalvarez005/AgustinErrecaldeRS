@@ -29,6 +29,12 @@ export async function signInWithPassword(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
+    console.error("Sign in failed:", error.code, error.message);
+    if (error.code === "email_not_confirmed") {
+      failLogin(
+        "Todavía no confirmaste tu email. Revisá tu casilla y hacé click en el link de confirmación.",
+      );
+    }
     failLogin("No pudimos iniciar sesión. Revisá tu email y contraseña.");
   }
 
@@ -48,13 +54,21 @@ export async function signUpWithPassword(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: { emailRedirectTo: `${siteUrl()}/auth/callback` },
   });
   if (error) {
+    console.error("Sign up failed:", error.code, error.message);
     failLogin("No pudimos crear la cuenta. Probá con otro email.");
+  }
+
+  // If email confirmation is disabled on the project, signUp already
+  // returns an active session — no point telling the user to check an
+  // email that won't matter.
+  if (data.session) {
+    redirect("/today");
   }
 
   redirect(
@@ -74,6 +88,7 @@ export async function sendMagicLink(formData: FormData) {
     options: { emailRedirectTo: `${siteUrl()}/auth/callback` },
   });
   if (error) {
+    console.error("Magic link failed:", error.code, error.message);
     failLogin("No pudimos enviar el link de acceso. Intentá nuevamente.");
   }
 

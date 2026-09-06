@@ -81,6 +81,7 @@ export default async function ContactDetailPage({
             </h1>
             <Button
               render={<Link href={`/contacts/${contact.id}/edit`} />}
+              nativeButton={false}
               variant="ghost"
               size="icon-sm"
             >
@@ -161,7 +162,16 @@ export default async function ContactDetailPage({
             action={logActivity.bind(null, contact.id)}
             className="flex flex-wrap items-end gap-2"
           >
-            <Select name="type" defaultValue={LOGGABLE_ACTIVITY_TYPES[0]}>
+            <Select
+              name="type"
+              defaultValue={LOGGABLE_ACTIVITY_TYPES[0]}
+              items={Object.fromEntries(
+                LOGGABLE_ACTIVITY_TYPES.map((type) => [
+                  type,
+                  ACTIVITY_TYPE_LABELS[type],
+                ]),
+              )}
+            >
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
@@ -228,7 +238,11 @@ export default async function ContactDetailPage({
               className="max-w-xs flex-1"
               required
             />
-            <Select name="priority" defaultValue="medium">
+            <Select
+              name="priority"
+              defaultValue="medium"
+              items={TASK_PRIORITY_LABELS}
+            >
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
