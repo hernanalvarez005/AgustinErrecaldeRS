@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function listAcquisitions(organizationId: string) {
   const supabase = await createClient();
   const { data: acquisitions, error } = await supabase
-    .from("property_acquisitions")
+    .from("acquisition_overview")
     .select(
       "id, property_id, primary_owner_contact_id, status, estimated_value, next_action_at, updated_at",
     )
