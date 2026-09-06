@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * Shared across every entity that can have notes/tasks/activities attached
- * (contacts, properties, acquisitions, searches, leads, more later).
+ * (contacts, properties, acquisitions, searches, leads, deals, more later).
  * Exactly one of these should be set per call — see docs/DATABASE.md on why
  * these are plain nullable FK columns rather than a polymorphic
  * "entity_type" column.
@@ -15,6 +15,7 @@ export type EngagementContext = {
   acquisitionId?: string;
   searchId?: string;
   leadId?: string;
+  dealId?: string;
 };
 
 function scopeQuery<T extends { eq: (column: string, value: string) => T }>(
@@ -28,6 +29,7 @@ function scopeQuery<T extends { eq: (column: string, value: string) => T }>(
     scoped = scoped.eq("acquisition_id", context.acquisitionId);
   if (context.searchId) scoped = scoped.eq("search_id", context.searchId);
   if (context.leadId) scoped = scoped.eq("lead_id", context.leadId);
+  if (context.dealId) scoped = scoped.eq("deal_id", context.dealId);
   return scoped;
 }
 

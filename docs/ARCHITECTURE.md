@@ -249,3 +249,43 @@ tocar esto de nuevo): nunca dejar timezone implícita en un `toLocaleString`/
 eligió sin hora", va con `formatDate` (UTC). Si es "un momento real que
 pasó o va a pasar", va con `formatDateTime`/`formatEventDay`
 (timezone del negocio).
+
+## Gotcha verificado: Base UI y un formulario que se revalida en el mismo lugar
+
+Encontrado en Fase 6 probando el formulario de "precios y fechas clave" de
+`/deals/[id]`: al completar por primera vez los campos de oferta/fechas/
+comisión (todos vacíos hasta ese momento) y guardar, la consola tiraba:
+
+```
+Base UI: A component is changing the default value state of an
+uncontrolled FieldControl after being initialized. To suppress this
+warning opt to use a controlled FieldControl.
+```
+
+Causa raíz: `updateDealTerms` no hace `redirect` — solo
+`revalidatePath(`/deals/${dealId}`)`, porque el formulario vive en la misma
+página que muestra el resultado (a diferencia de `/searches/[id]/edit` o
+`/contacts/[id]/edit`, que sí redirigen a otra ruta al guardar). Next.js
+re-renderiza el Server Component con los datos frescos **sin desmontar el
+árbol**, así que los `<Input defaultValue={deal.offer_price ?? ""}>` que
+antes montaron con `""` ahora reciben un `defaultValue` distinto sobre la
+misma instancia ya montada — exactamente el anti-patrón de "cambiar el
+valor por defecto de un campo no controlado después de inicializado" que
+Base UI detecta y advierte (antes lo vimos con `Select`, acá aparece en el
+`Input`/`FieldControl` genérico: mismo mecanismo interno, mismo síntoma).
+
+Verificado que era esto y no un artefacto de testing: en una pestaña nueva,
+cargar la página ya con los campos poblados (después del primer guardado)
+nunca tira el warning — solo aparece en la transición "vacío → poblado
+en la misma instancia montada".
+
+Fix: `key={deal.updated_at}` en el `<form>`. Cuando `updated_at` cambia
+(es decir, cuando el guardado realmente pisa datos), React trata el
+formulario como un nodo nuevo — lo desmonta y remonta con las
+`defaultValue` correctas desde cero, en vez de mutar una instancia ya
+inicializada. No hace falta convertir los campos a controlados.
+
+Aplica a cualquier formulario futuro que edite datos y se quede en la
+misma ruta (server action sin `redirect`, solo `revalidatePath`) con
+inputs no controlados que arrancan vacíos — no a los que redirigen a otra
+página al guardar (esos sí remontan solos, por el cambio de ruta).

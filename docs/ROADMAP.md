@@ -120,10 +120,35 @@ criterio que Fases 1-3).
 Pendiente de esta fase, movido a después: tests automatizados (mismo
 criterio que Fases 1-4).
 
-## Fase 6 — Operaciones
+## Fase 6 — Operaciones ✅
 
-- Tabla `deals`, pipeline venta/alquiler, timeline de hitos legales,
-  comisión estimada.
+- Tabla `deals` (buyer_contact_id/seller_contact_id obligatorios — a
+  diferencia de una captación o una búsqueda, una operación solo existe
+  con comprador y vendedor concretos), pipeline propio (negociación →
+  oferta → reserva → documentación → contrato → escrituración →
+  cerrada/cancelada). `notes`/`tasks`/`activities` ganaron `deal_id`.
+  Vista `deal_overview` con `last_interaction_at`/`next_action_at`
+  calculados desde el primer momento (no repite el bug real de Fase 3
+  recién corregido).
+- `/deals`: Kanban con drag & drop (reutilizando los tres fixes de
+  `@dnd-kit` documentados en docs/ARCHITECTURE.md) + vista tabla
+  (`?view=table`).
+- `/deals/new`: elige propiedad + comprador + vendedor + tipo de
+  operación + precio de publicación.
+- `/deals/[id]`: formulario de "precios y fechas clave" (oferta, precio
+  acordado, fechas de reserva/contrato/escrituración, comisión estimada),
+  registro de actividad, tareas, notas, timeline.
+- Extraído `components/properties/property-select-field.tsx`: mismo
+  patrón de degradar a input oculto con una sola opción que
+  `ContactSelectField`, ahora para propiedades.
+- **Bug real encontrado y corregido (Fase 3):** `property_acquisitions.
+next_action_at` era una columna que nada escribía nunca — "Próxima
+  acción" en Captaciones mostraba siempre "—" desde que existe la fase.
+  Reemplazada por `acquisition_overview` (mismo patrón de vista calculada
+  que el resto de las entidades). Ver docs/DATABASE.md.
+
+Pendiente de esta fase, movido a después: tests automatizados (mismo
+criterio que Fases 1-5).
 
 ## Fase 7 — Hoy
 

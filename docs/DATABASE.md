@@ -201,8 +201,17 @@ not null, status text check in ('new_lead','contacted','meeting_scheduled',
 'meeting_completed','valuation','proposal_sent','follow_up','won','lost')
 default 'new_lead', origin (mismo enum que `contacts.source`),
 estimated_value numeric, proposed_listing_price numeric, valuation_date,
-meeting_date, next_action_at, lost_reason, notes, created_at, updated_at`.
+meeting_date, lost_reason, notes, created_at, updated_at`.
 Índices sobre `organization_id`, `property_id`, `status`.
+
+**Actualizado en Fase 6:** esta tabla tenía originalmente una columna
+`next_action_at timestamptz` que nada escribía nunca — un bug real
+detectado al planificar `deals` (docs/ROADMAP.md, Fase 6). Se eliminó y se
+reemplazó por `acquisition_overview` (vista `security_invoker`, mismo
+patrón que `contact_overview`/`property_overview`/`search_overview`/
+`lead_overview`), que calcula `next_action_at` desde `tasks` en vez de
+depender de un valor que nadie setea. `lib/data/acquisitions.ts` lee de la
+vista; el resto de la UI no cambió (mismo nombre de columna).
 
 `primary_owner_contact_id` duplica algo que también vive en
 `property_owners` (Fase 2) — es intencional: la tarjeta del Kanban necesita
@@ -350,14 +359,48 @@ búsqueda (regla de negocio 6 del spec), verificado en vivo con tres casos:
 vincular a un contacto existente, crear uno nuevo de cero, y forzar la
 creación de todas formas pese a un match de teléfono.
 
-### `deals` (Fase 6)
+## Implementado (Fase 6)
 
-`id, organization_id, property_id fk not null, buyer_contact_id fk,
-seller_contact_id fk, deal_type, status text check in ('negotiation','offer',
-'reservation','documentation','contract','closing','closed','cancelled'),
-asking_price, offer_price, agreed_price numeric, currency, reservation_date,
-contract_date, closing_date, estimated_commission numeric,
-commission_currency, notes, created_at, updated_at, created_by`.
+### `deals`
+
+`id, organization_id, property_id fk not null, buyer_contact_id fk not
+null, seller_contact_id fk not null, deal_type (mismo enum que
+`properties.operation_type`/`property_searches.operation_type` —
+sale/rent/temporary_rent), status text check in ('negotiation','offer',
+'reservation','documentation','contract','closing','closed','cancelled')
+default 'negotiation', asking_price, offer_price, agreed_price
+numeric(14,2), currency text check in ('ARS','USD'), reservation_date,
+contract_date, closing_date date, estimated_commission numeric(14,2),
+commission_currency text check in ('ARS','USD'), notes, created_at,
+updated_at, created_by`. Índices sobre `organization_id`, `property_id`,
+`buyer_contact_id`, `seller_contact_id`, `status`.
+
+`buyer_contact_id`/`seller_contact_id` son NOT NULL a propósito — a
+diferencia de una captación (todavía no hay comprador) o una búsqueda
+(todavía no hay propiedad), una operación solo tiene sentido una vez que
+hay un comprador y un vendedor concretos negociando una propiedad
+concreta. No hay flujo de creación "desde cero" como en captaciones:
+`/deals/new` asume que la propiedad y ambos contactos ya existen.
+
+### `notes` / `tasks` / `activities`
+
+Ganaron `deal_id` (mismo patrón ALTER TABLE nullable que en todas las
+fases anteriores).
+
+### `deal_overview` (vista, `security_invoker`)
+
+Mismo patrón que el resto de las vistas `*_overview`:
+`last_interaction_at`/`next_action_at` calculados desde `activities`/
+`tasks` desde el primer momento — a propósito, para no repetir el bug
+real de Fase 3 (columna `next_action_at` que nadie escribía, corregido en
+esta misma fase, ver la nota en `property_acquisitions` más arriba).
+
+### Kanban de operaciones
+
+`/deals` reutiliza `@dnd-kit/core` con los tres fixes ya documentados en
+docs/ARCHITECTURE.md desde el primer commit (activationConstraint,
+DndContext id fijo, opciones de sensor a nivel de módulo) — verificados
+en vivo de nuevo acá, sin necesidad de redescubrirlos.
 
 ## Índices previstos (más allá de las PK/FK)
 

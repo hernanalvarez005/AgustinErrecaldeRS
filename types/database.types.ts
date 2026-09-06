@@ -139,6 +139,16 @@ export type LeadStatus =
   | "unresponsive"
   | "lost";
 
+export type DealStatus =
+  | "negotiation"
+  | "offer"
+  | "reservation"
+  | "documentation"
+  | "contract"
+  | "closing"
+  | "closed"
+  | "cancelled";
+
 export interface Database {
   public: {
     Tables: {
@@ -297,6 +307,7 @@ export interface Database {
           acquisition_id: string | null;
           search_id: string | null;
           lead_id: string | null;
+          deal_id: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -310,6 +321,7 @@ export interface Database {
           acquisition_id?: string | null;
           search_id?: string | null;
           lead_id?: string | null;
+          deal_id?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -328,6 +340,7 @@ export interface Database {
           acquisition_id: string | null;
           search_id: string | null;
           lead_id: string | null;
+          deal_id: string | null;
           priority: TaskPriority;
           due_at: string | null;
           status: TaskStatus;
@@ -347,6 +360,7 @@ export interface Database {
           acquisition_id?: string | null;
           search_id?: string | null;
           lead_id?: string | null;
+          deal_id?: string | null;
           priority?: TaskPriority;
           due_at?: string | null;
           status?: TaskStatus;
@@ -371,6 +385,7 @@ export interface Database {
           acquisition_id: string | null;
           search_id: string | null;
           lead_id: string | null;
+          deal_id: string | null;
           starts_at: string;
           ends_at: string | null;
           status: ActivityStatus;
@@ -392,6 +407,7 @@ export interface Database {
           acquisition_id?: string | null;
           search_id?: string | null;
           lead_id?: string | null;
+          deal_id?: string | null;
           starts_at?: string;
           ends_at?: string | null;
           status?: ActivityStatus;
@@ -517,7 +533,6 @@ export interface Database {
           proposed_listing_price: number | null;
           valuation_date: string | null;
           meeting_date: string | null;
-          next_action_at: string | null;
           lost_reason: string | null;
           notes: string | null;
           created_at: string;
@@ -534,7 +549,6 @@ export interface Database {
           proposed_listing_price?: number | null;
           valuation_date?: string | null;
           meeting_date?: string | null;
-          next_action_at?: string | null;
           lost_reason?: string | null;
           notes?: string | null;
           created_at?: string;
@@ -691,6 +705,54 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["leads"]["Insert"]>;
         Relationships: [];
       };
+      deals: {
+        Row: {
+          id: string;
+          organization_id: string;
+          property_id: string;
+          buyer_contact_id: string;
+          seller_contact_id: string;
+          deal_type: OperationType;
+          status: DealStatus;
+          asking_price: number | null;
+          offer_price: number | null;
+          agreed_price: number | null;
+          currency: "ARS" | "USD" | null;
+          reservation_date: string | null;
+          contract_date: string | null;
+          closing_date: string | null;
+          estimated_commission: number | null;
+          commission_currency: "ARS" | "USD" | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          property_id: string;
+          buyer_contact_id: string;
+          seller_contact_id: string;
+          deal_type?: OperationType;
+          status?: DealStatus;
+          asking_price?: number | null;
+          offer_price?: number | null;
+          agreed_price?: number | null;
+          currency?: "ARS" | "USD" | null;
+          reservation_date?: string | null;
+          contract_date?: string | null;
+          closing_date?: string | null;
+          estimated_commission?: number | null;
+          commission_currency?: "ARS" | "USD" | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["deals"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       contact_overview: {
@@ -718,6 +780,19 @@ export interface Database {
       };
       lead_overview: {
         Row: Database["public"]["Tables"]["leads"]["Row"] & {
+          last_interaction_at: string | null;
+          next_action_at: string | null;
+        };
+        Relationships: [];
+      };
+      acquisition_overview: {
+        Row: Database["public"]["Tables"]["property_acquisitions"]["Row"] & {
+          next_action_at: string | null;
+        };
+        Relationships: [];
+      };
+      deal_overview: {
+        Row: Database["public"]["Tables"]["deals"]["Row"] & {
           last_interaction_at: string | null;
           next_action_at: string | null;
         };
@@ -757,6 +832,8 @@ export type PropertyOwner =
   Database["public"]["Tables"]["property_owners"]["Row"];
 export type Acquisition =
   Database["public"]["Tables"]["property_acquisitions"]["Row"];
+export type AcquisitionOverview =
+  Database["public"]["Views"]["acquisition_overview"]["Row"];
 export type Valuation = Database["public"]["Tables"]["valuations"]["Row"];
 export type PropertySearch =
   Database["public"]["Tables"]["property_searches"]["Row"];
@@ -764,3 +841,5 @@ export type SearchOverview =
   Database["public"]["Views"]["search_overview"]["Row"];
 export type Lead = Database["public"]["Tables"]["leads"]["Row"];
 export type LeadOverview = Database["public"]["Views"]["lead_overview"]["Row"];
+export type Deal = Database["public"]["Tables"]["deals"]["Row"];
+export type DealOverview = Database["public"]["Views"]["deal_overview"]["Row"];
