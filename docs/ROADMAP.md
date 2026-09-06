@@ -206,11 +206,29 @@ criterio que Fases 1-6).
 Pendiente de esta fase, movido a después: tests automatizados (mismo
 criterio que Fases 1-7); sincronización con Google Calendar (Fase 9).
 
-## Fase 9 — Google Calendar
+## Fase 9 — Google Calendar ✅
 
-- OAuth 2.0, sincronización unilateral CRM → Calendar (`google_event_id`),
-  create/update/cancel, refresh token seguro, sin loguear tokens.
-  Calendar → CRM queda documentado como fase futura, no implementado.
+- OAuth 2.0 (authorization code, `access_type=offline` + `prompt=consent`
+  para garantizar refresh_token) contra la Calendar API. Conexión 1:1 por
+  usuario (`google_calendar_connections`, sin `organization_id` — mismo
+  patrón que `profiles`), gestionable desde Configuración
+  (conectar/desconectar).
+- Sincronización unilateral CRM → Calendar: `/calendar/new` y
+  `/calendar/[id]/edit` (y el botón rápido "Cancelar" del listado) crean/
+  actualizan/eliminan el evento espejo en Google, guardando
+  `activities.google_event_id` (columna que ya existía desde Fase 1, sin
+  usar hasta ahora). Solo eventos `scheduled`/editados a
+  `completed`/`cancelled` — el registro rápido de actividades ya
+  ocurridas no sincroniza (no tiene sentido llevar un historial al
+  calendario). Calendar → CRM queda fuera de alcance, documentado como
+  fase futura.
+- Sincronización best-effort: un fallo de la API de Google nunca bloquea
+  guardar el registro del CRM, que sigue siendo la fuente de verdad.
+- Refresh automático del access token (con margen de 1 minuto) antes de
+  cada llamada; nunca se loguea un token, ni en éxito ni en error.
+
+Pendiente de esta fase, movido a después: tests automatizados (mismo
+criterio que Fases 1-8); Calendar → CRM (sincronización bidireccional).
 
 ## Fase 10 — Dashboard
 

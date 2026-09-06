@@ -363,3 +363,41 @@ mes/semana/día — sin corrimiento en ninguna dirección.
 Regla para cualquier código futuro que lea un `datetime-local` (o
 cualquier fecha-hora sin zona explícita) del lado del servidor: nunca
 `new Date(valorCrudo)` — siempre `lib/date.ts`.
+
+## Google Calendar: por qué la sincronización es "best-effort" y unilateral
+
+`lib/google/calendar.ts` (Fase 9) nunca deja que un fallo de la API de
+Google impida guardar el registro en el CRM: `createGoogleCalendarEvent`/
+`updateGoogleCalendarEvent`/`deleteGoogleCalendarEvent` atrapan sus
+propios errores, loguean el `status` HTTP (nunca el cuerpo de la
+respuesta ni el token) y devuelven `null`/`false` en vez de propagar la
+excepción. La razón: el CRM es la fuente de verdad de la agenda del
+asesor — que Google esté momentáneamente caído, que el token haya sido
+revocado manualmente, o que el asesor todavía no haya conectado su cuenta
+nunca debería impedir agendar/editar/cancelar un evento en `/calendar`.
+El costo de esta decisión es que un evento puede quedar "no sincronizado"
+sin que el asesor se entere en el momento — aceptable para una sync que
+es explícitamente de un solo sentido y de mejor esfuerzo, no aceptable si
+esto alguna vez se vuelve bidireccional (ahí sí hace falta una cola de
+reintentos y feedback visible).
+
+También por eso la sincronización es unilateral CRM → Calendar y no al
+revés: sincronizar Calendar → CRM requeriría un webhook (push
+notifications de Google) o polling periódico, más lógica de resolución
+de conflictos cuando el mismo evento cambió en los dos lados — explícitamente
+fuera de alcance de esta fase (docs/ROADMAP.md), documentado como fase
+futura si hace falta.
+
+## Gotcha evitado a propósito: `google_calendar_connections` sin `organization_id`
+
+A diferencia de cada tabla de negocio de este proyecto (que lleva
+`organization_id` y una política RLS `organization_id in (select
+private.user_org_ids())`), `google_calendar_connections` es 1:1 con
+`auth.users` — mismo patrón que `profiles` — y su RLS es simplemente
+`user_id = auth.uid()`. Esto es deliberado, no un descuido: una conexión
+de Google es una credencial personal del asesor (su cuenta de Gmail), no
+un dato de negocio que otro miembro de la misma organización debería
+poder leer o usar. Si el día de mañana un equipo comparte una
+organización, cada asesor sigue necesitando conectar su propia cuenta de
+Google — no hay "una" conexión de la organización para reutilizar entre
+varios usuarios.

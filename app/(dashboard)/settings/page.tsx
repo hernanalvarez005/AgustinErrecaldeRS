@@ -1,5 +1,9 @@
+import { disconnectGoogleCalendar } from "@/app/(dashboard)/settings/actions";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentMembership, getProfile } from "@/lib/auth/session";
+import { getGoogleCalendarConnection } from "@/lib/data/google-calendar";
+import { formatDate } from "@/lib/format";
 
 const ROLE_LABELS: Record<string, string> = {
   owner: "Dueño",
@@ -7,10 +11,18 @@ const ROLE_LABELS: Record<string, string> = {
   member: "Miembro",
 };
 
-export default async function SettingsPage() {
-  const [profile, membership] = await Promise.all([
+export default async function SettingsPage({
+  searchParams,
+}: PageProps<"/settings">) {
+  const params = await searchParams;
+  const connectedNotice = params.google === "connected";
+  const googleError =
+    typeof params.googleError === "string" ? params.googleError : undefined;
+
+  const [profile, membership, googleConnection] = await Promise.all([
     getProfile(),
     getCurrentMembership(),
+    getGoogleCalendarConnection(),
   ]);
 
   return (
@@ -69,9 +81,63 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Google Calendar</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          {connectedNotice ? (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-700 dark:text-emerald-400">
+              Conectado correctamente.
+            </div>
+          ) : null}
+          {googleError ? (
+            <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-3 py-2">
+              {googleError}
+            </div>
+          ) : null}
+          {googleConnection ? (
+            <>
+              <p>
+                Conectado como{" "}
+                <span className="font-medium">
+                  {googleConnection.google_email ?? "cuenta de Google"}
+                </span>
+                {googleConnection.created_at
+                  ? ` · desde ${formatDate(googleConnection.created_at)}`
+                  : ""}
+              </p>
+              <p className="text-muted-foreground">
+                Los eventos que agendes en la Agenda del CRM se copian a este
+                calendario de Google. La sincronización es en un solo sentido:
+                lo que cambies directamente en Google Calendar no vuelve al CRM.
+              </p>
+              <form action={disconnectGoogleCalendar}>
+                <Button type="submit" variant="outline" size="sm">
+                  Desconectar
+                </Button>
+              </form>
+            </>
+          ) : (
+            <>
+              <p className="text-muted-foreground">
+                Conectá tu cuenta de Google para que los eventos que agendes en
+                la Agenda del CRM aparezcan también en tu Google Calendar.
+              </p>
+              <Button
+                render={<a href="/api/google/auth" />}
+                nativeButton={false}
+              >
+                Conectar Google Calendar
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       <p className="text-muted-foreground text-xs">
-        La edición de estos datos y la conexión con Google Calendar se agregan
-        en fases posteriores (ver docs/ROADMAP.md).
+        La edición de estos datos se agrega en una fase posterior (ver
+        docs/ROADMAP.md).
       </p>
     </div>
   );

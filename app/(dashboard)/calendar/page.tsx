@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
+import { updateEventStatus } from "@/app/(dashboard)/calendar/actions";
 import { MonthGrid } from "@/components/calendar/month-grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,20 @@ function EventRow({ event }: { event: CalendarEvent }) {
           <p className="text-muted-foreground">📍 {event.location}</p>
         ) : null}
       </div>
+      {event.status === "scheduled" ? (
+        <div className="flex shrink-0 gap-1">
+          <form action={updateEventStatus.bind(null, event.id, "completed")}>
+            <Button type="submit" size="sm" variant="ghost">
+              Completar
+            </Button>
+          </form>
+          <form action={updateEventStatus.bind(null, event.id, "cancelled")}>
+            <Button type="submit" size="sm" variant="ghost">
+              Cancelar
+            </Button>
+          </form>
+        </div>
+      ) : null}
     </li>
   );
 }

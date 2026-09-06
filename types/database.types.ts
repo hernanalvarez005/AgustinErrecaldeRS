@@ -753,6 +753,32 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["deals"]["Insert"]>;
         Relationships: [];
       };
+      google_calendar_connections: {
+        Row: {
+          user_id: string;
+          google_email: string | null;
+          access_token: string;
+          refresh_token: string;
+          token_expiry: string;
+          calendar_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          google_email?: string | null;
+          access_token: string;
+          refresh_token: string;
+          token_expiry: string;
+          calendar_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["google_calendar_connections"]["Insert"]
+        >;
+        Relationships: [];
+      };
     };
     Views: {
       contact_overview: {
@@ -843,3 +869,5 @@ export type Lead = Database["public"]["Tables"]["leads"]["Row"];
 export type LeadOverview = Database["public"]["Views"]["lead_overview"]["Row"];
 export type Deal = Database["public"]["Tables"]["deals"]["Row"];
 export type DealOverview = Database["public"]["Views"]["deal_overview"]["Row"];
+export type GoogleCalendarConnection =
+  Database["public"]["Tables"]["google_calendar_connections"]["Row"];

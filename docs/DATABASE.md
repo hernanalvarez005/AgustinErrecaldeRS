@@ -442,6 +442,36 @@ mostrar datos reales.
   zona horaria) y un instante UTC correcto — ver el gotcha nuevo en
   docs/ARCHITECTURE.md.
 
+## Implementado (Fase 9)
+
+### `google_calendar_connections`
+
+`user_id uuid primary key references auth.users (id) on delete cascade,
+google_email, access_token not null, refresh_token not null,
+token_expiry timestamptz not null, calendar_id text not null default
+'primary', created_at, updated_at`.
+
+1:1 con `auth.users`, igual que `profiles` — sin `organization_id`. Es
+deliberado: una conexión de Google es una credencial personal del asesor
+(su propia cuenta de Google), no un dato de negocio compartido por la
+organización, así que no sigue el patrón `organization_id in (select
+private.user_org_ids())` del resto de las tablas — la política RLS es
+"solo el dueño de la fila" (`user_id = auth.uid()`), sin excepción ni para
+otros miembros de la misma organización.
+
+**Límite conocido, documentado a propósito:** los tokens no están
+cifrados a nivel de columna (pgcrypto) — cifrarlos introduce su propio
+problema de dónde guardar la clave de cifrado, que para una MVP de un
+solo asesor no se justifica todavía. La seguridad se apoya en RLS (dueño
+únicamente) + que los tokens nunca salen del servidor (ningún Server
+Action/Route Handler los expone al cliente) + el cifrado en reposo que
+Supabase ya provee a nivel de infraestructura para toda la base. Revisar
+si esto deja de alcanzar cuando haya más de un asesor por organización.
+
+`activities.google_event_id` (Fase 1, sin usar hasta ahora) es donde se
+guarda el id del evento espejo en Google — no hace falta ninguna columna
+nueva en `activities`.
+
 ## Índices previstos (más allá de las PK/FK)
 
 `organization_id`, `contact_id`, `property_id`, `status`, `due_at`,
