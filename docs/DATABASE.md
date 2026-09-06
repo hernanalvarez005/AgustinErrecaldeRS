@@ -586,6 +586,29 @@ código — son "schema-ready pero sin UI", mismo patrón que
 como es un solo asesor por organización, ninguna pantalla filtra tasks
 por "asignadas a mí".
 
+## V2 bloque B — `acquisition_overview` extendida
+
+`create or replace view` (aditivo, sin romper ningún `select *` previo)
+agregando dos columnas que `search_overview`/`deal_overview` ya tenían o
+necesitaban:
+
+- `last_interaction_at`: `max(activities.starts_at) where status =
+'completed'` — mismo criterio que `search_overview` (no
+  `deal_overview`, que no filtra por status; inconsistencia preexistente
+  entre esas dos vistas, detectada durante esta auditoría pero no
+  corregida acá para no tocar `deal_overview` sin que este bloque lo
+  pidiera — ver docs/V2_EVOLUTION_PLAN.md).
+- `pending_tasks_count`: `count(*)` de tasks `pending`/`in_progress` —
+  nuevo, ninguna de las 4 vistas `*_overview` lo tenía todavía. Alimenta
+  la columna "Pendientes" de `/acquisitions`.
+
+`insertAcquisitionRecord` (`app/(dashboard)/acquisitions/actions.ts`,
+interno, no exportado) es el único lugar que inserta
+`properties`+`property_owners`+`property_acquisitions` juntos — lo usan
+tanto el formulario completo (`createAcquisition`) como las dos ramas de
+"captación rápida", para que nunca haya dos caminos de escritura para el
+mismo resultado.
+
 ## Índices previstos (más allá de las PK/FK)
 
 `organization_id`, `contact_id`, `property_id`, `status`, `due_at`,

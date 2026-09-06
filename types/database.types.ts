@@ -818,6 +818,10 @@ export interface Database {
       acquisition_overview: {
         Row: Database["public"]["Tables"]["property_acquisitions"]["Row"] & {
           next_action_at: string | null;
+          // V2 bloque B: brought in line with search_overview/deal_overview,
+          // which already had last_interaction_at — see docs/DATABASE.md.
+          last_interaction_at: string | null;
+          pending_tasks_count: number;
         };
         Relationships: [];
       };

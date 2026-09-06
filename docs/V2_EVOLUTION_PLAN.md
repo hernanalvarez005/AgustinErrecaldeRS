@@ -73,7 +73,36 @@ Detalle original del plan:
 
 ---
 
-## Bloque B — Captaciones
+## Bloque B — Captaciones ✅ implementado
+
+Implementado tal como se planeó, con una pieza nueva no anticipada:
+
+- `/acquisitions/quick` (captación rápida): formulario mínimo
+  (propietario nombre/apellido/teléfono, dirección/referencia, tipo,
+  precio estimado, origen, notas) con el mismo patrón de detección de
+  duplicados que `components/leads/convert-lead-form.tsx` (avisa, nunca
+  bloquea). Refactor real: la lógica de "crear propiedad + vínculo de
+  propietario + captación" de `createAcquisition` se extrajo a
+  `insertAcquisitionRecord` (función interna, no exportada) para que la
+  captación rápida (tanto la rama "contacto nuevo" como "usar este
+  contacto") reutilice exactamente el mismo camino de escritura que el
+  formulario completo — nunca un segundo camino paralelo.
+- Banner "Captación creada" en la ficha (`?created=1`) con las 4 acciones
+  del spec: Completar propiedad, Crear seguimiento (ancla a la card de
+  Tareas), Agendar reunión, Volver.
+- Tabla enriquecida (Origen, Último contacto, Pendientes) y tarjetas del
+  Kanban enriquecidas (Último contacto, Pendientes).
+- Migración: `acquisition_overview` ganó `last_interaction_at` (mismo
+  patrón que `search_overview`) y `pending_tasks_count` (nuevo en las 4
+  vistas `*_overview`).
+- Verificado end-to-end contra Supabase real: alta rápida completa,
+  detección de duplicado por teléfono, "usar este contacto" vincula sin
+  crear un contacto repetido (confirmado por consulta directa — 1 solo
+  contacto para 2 captaciones), tabla y Kanban muestran los datos nuevos
+  correctamente tras registrar una actividad y una tarea. Sin errores de
+  consola ni de servidor.
+
+Detalle original del plan:
 
 | Mejora                                           | Estado actual                                                                                                                                                                                                                              | Reutilizar                                                                                          | Modificar                                                                                                                                                                                                 | Nuevo                                                                                               | Riesgo                                                                                                                                                    |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |

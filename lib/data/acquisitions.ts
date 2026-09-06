@@ -12,7 +12,7 @@ export async function listAcquisitions(organizationId: string) {
   const { data: acquisitions, error } = await supabase
     .from("acquisition_overview")
     .select(
-      "id, property_id, primary_owner_contact_id, status, estimated_value, next_action_at, updated_at",
+      "id, property_id, primary_owner_contact_id, status, origin, estimated_value, next_action_at, last_interaction_at, pending_tasks_count, updated_at",
     )
     .eq("organization_id", organizationId)
     .order("updated_at", { ascending: false });

@@ -16,6 +16,7 @@ import { requireMembership } from "@/lib/auth/session";
 import { listAcquisitions } from "@/lib/data/acquisitions";
 import { formatDate } from "@/lib/format";
 import { ACQUISITION_STATUS_LABELS } from "@/lib/validations/acquisition";
+import { CONTACT_SOURCE_LABELS } from "@/lib/validations/contact";
 
 export default async function AcquisitionsPage({
   searchParams,
@@ -46,6 +47,14 @@ export default async function AcquisitionsPage({
             variant="outline"
           >
             {view === "kanban" ? "Ver tabla" : "Ver Kanban"}
+          </Button>
+          <Button
+            render={<Link href="/acquisitions/quick" />}
+            nativeButton={false}
+            variant="outline"
+          >
+            <Plus />
+            Captación rápida
           </Button>
           <Button
             render={<Link href="/acquisitions/new" />}
@@ -80,9 +89,12 @@ export default async function AcquisitionsPage({
               <TableRow>
                 <TableHead>Propiedad</TableHead>
                 <TableHead>Propietario</TableHead>
+                <TableHead>Origen</TableHead>
                 <TableHead>Valor estimado</TableHead>
+                <TableHead>Fase</TableHead>
+                <TableHead>Último contacto</TableHead>
                 <TableHead>Próxima acción</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead>Pendientes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -102,17 +114,26 @@ export default async function AcquisitionsPage({
                       : "—"}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
+                    {a.origin ? CONTACT_SOURCE_LABELS[a.origin] : "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
                     {a.estimated_value
                       ? a.estimated_value.toLocaleString("es-AR")
                       : "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {formatDate(a.next_action_at) ?? "—"}
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">
                       {ACQUISITION_STATUS_LABELS[a.status]}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {formatDate(a.last_interaction_at) ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {formatDate(a.next_action_at) ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {a.pending_tasks_count > 0 ? a.pending_tasks_count : "—"}
                   </TableCell>
                 </TableRow>
               ))}

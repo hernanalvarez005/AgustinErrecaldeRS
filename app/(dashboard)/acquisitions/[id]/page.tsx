@@ -49,8 +49,11 @@ async function getOwner(contactId: string) {
 
 export default async function AcquisitionDetailPage({
   params,
+  searchParams,
 }: PageProps<"/acquisitions/[id]">) {
   const { id } = await params;
+  const query = await searchParams;
+  const justCreated = query.created === "1";
 
   const acquisition = await getAcquisition(id);
   if (!acquisition) notFound();
@@ -106,6 +109,54 @@ export default async function AcquisitionDetailPage({
           </Link>
         ) : null}
       </div>
+
+      {justCreated ? (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="text-sm">Captación creada</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {property ? (
+              <Button
+                render={<Link href={`/properties/${property.id}/edit`} />}
+                nativeButton={false}
+                size="sm"
+                variant="outline"
+              >
+                Completar propiedad
+              </Button>
+            ) : null}
+            <Button
+              render={<Link href="#tareas" />}
+              nativeButton={false}
+              size="sm"
+              variant="outline"
+            >
+              Crear seguimiento
+            </Button>
+            <Button
+              render={
+                <Link
+                  href={`/calendar/new?contactId=${acquisition.primary_owner_contact_id}${property ? `&propertyId=${property.id}` : ""}`}
+                />
+              }
+              nativeButton={false}
+              size="sm"
+              variant="outline"
+            >
+              Agendar reunión
+            </Button>
+            <Button
+              render={<Link href="/acquisitions" />}
+              nativeButton={false}
+              size="sm"
+              variant="ghost"
+            >
+              Volver
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {acquisition.status !== "lost" && acquisition.status !== "won" ? (
         <Card>
@@ -264,7 +315,7 @@ export default async function AcquisitionDetailPage({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="tareas">
         <CardHeader>
           <CardTitle className="text-sm">Tareas</CardTitle>
         </CardHeader>

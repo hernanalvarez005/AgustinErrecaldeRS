@@ -38,6 +38,8 @@ export type KanbanAcquisition = {
   status: AcquisitionStatus;
   estimated_value: number | null;
   next_action_at: string | null;
+  last_interaction_at: string | null;
+  pending_tasks_count: number;
   property: {
     title: string;
     city: string | null;
@@ -83,9 +85,21 @@ function AcquisitionCard({ acquisition }: { acquisition: KanbanAcquisition }) {
           Est. {acquisition.estimated_value.toLocaleString("es-AR")}
         </p>
       ) : null}
+      {acquisition.last_interaction_at ? (
+        <p className="text-muted-foreground">
+          Último contacto: {formatDate(acquisition.last_interaction_at)}
+        </p>
+      ) : null}
       {acquisition.next_action_at ? (
         <p className="text-muted-foreground">
           Próxima acción: {formatDate(acquisition.next_action_at)}
+        </p>
+      ) : null}
+      {acquisition.pending_tasks_count > 0 ? (
+        <p className="text-muted-foreground">
+          {acquisition.pending_tasks_count === 1
+            ? "1 pendiente"
+            : `${acquisition.pending_tasks_count} pendientes`}
         </p>
       ) : null}
     </div>
