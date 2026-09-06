@@ -24,9 +24,15 @@ import {
 } from "@/lib/actions/engagement";
 import { getContact, getContactRoles } from "@/lib/data/contacts";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
+import { getRecommendationsForContact } from "@/lib/data/recommendations";
 import { listSearchesByContact } from "@/lib/data/searches";
 import { getVisitFeedbackForContact } from "@/lib/data/visit-feedback";
-import { formatBudget, formatDate, formatDateTime } from "@/lib/format";
+import {
+  formatBudget,
+  formatDate,
+  formatDateTime,
+  formatEventDay,
+} from "@/lib/format";
 import { toWhatsAppLink } from "@/lib/phone";
 import {
   ACTIVITY_TYPE_LABELS,
@@ -37,6 +43,10 @@ import {
   OPERATION_TYPE_LABELS,
   PROPERTY_TYPE_LABELS,
 } from "@/lib/validations/property";
+import {
+  RECOMMENDATION_CHANNEL_LABELS,
+  RECOMMENDATION_STATUS_LABELS,
+} from "@/lib/validations/recommendation";
 import {
   SEARCH_OBJECTIVE_LABELS,
   SEARCH_STATUS_LABELS,
@@ -49,16 +59,25 @@ export default async function ContactDetailPage({
 }: PageProps<"/contacts/[id]">) {
   const { id } = await params;
 
-  const [contact, roles, searches, notes, tasks, activities, visitFeedback] =
-    await Promise.all([
-      getContact(id),
-      getContactRoles(id),
-      listSearchesByContact(id),
-      getNotes({ contactId: id }),
-      getTasks({ contactId: id }),
-      getActivities({ contactId: id }),
-      getVisitFeedbackForContact(id),
-    ]);
+  const [
+    contact,
+    roles,
+    searches,
+    notes,
+    tasks,
+    activities,
+    visitFeedback,
+    recommendations,
+  ] = await Promise.all([
+    getContact(id),
+    getContactRoles(id),
+    listSearchesByContact(id),
+    getNotes({ contactId: id }),
+    getTasks({ contactId: id }),
+    getActivities({ contactId: id }),
+    getVisitFeedbackForContact(id),
+    getRecommendationsForContact(id),
+  ]);
 
   if (!contact) notFound();
 
@@ -261,6 +280,38 @@ export default async function ContactDetailPage({
             }))}
             emptyMessage="Sin visitas con feedback registrado todavía."
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Propiedades presentadas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recommendations.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Sin propiedades presentadas todavía.
+            </p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {recommendations.map((r) => (
+                <li key={r.id}>
+                  <Link
+                    href={`/properties/${r.property_id}`}
+                    className="font-medium hover:underline"
+                  >
+                    {r.property?.title ?? "Propiedad"}
+                  </Link>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {RECOMMENDATION_CHANNEL_LABELS[r.channel]} ·{" "}
+                    {RECOMMENDATION_STATUS_LABELS[r.status]} ·{" "}
+                    {formatEventDay(r.sent_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
 

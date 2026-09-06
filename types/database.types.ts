@@ -164,6 +164,11 @@ export type OfferStatus =
   | "withdrawn"
   | "expired";
 
+export type RecommendationChannel =
+  "whatsapp" | "email" | "in_person" | "other";
+export type RecommendationStatus =
+  "sent" | "interested" | "not_interested" | "visit_scheduled";
+
 export interface Database {
   public: {
     Tables: {
@@ -710,6 +715,40 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["offers"]["Insert"]>;
         Relationships: [];
       };
+      property_recommendations: {
+        Row: {
+          id: string;
+          organization_id: string;
+          property_id: string;
+          search_id: string;
+          contact_id: string;
+          sent_at: string;
+          channel: RecommendationChannel;
+          status: RecommendationStatus;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          property_id: string;
+          search_id: string;
+          contact_id: string;
+          sent_at?: string;
+          channel?: RecommendationChannel;
+          status?: RecommendationStatus;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["property_recommendations"]["Insert"]
+        >;
+        Relationships: [];
+      };
       property_searches: {
         Row: {
           id: string;
@@ -987,6 +1026,8 @@ export type PropertyPriceHistoryEntry =
 export type VisitFeedback =
   Database["public"]["Tables"]["visit_feedback"]["Row"];
 export type Offer = Database["public"]["Tables"]["offers"]["Row"];
+export type PropertyRecommendation =
+  Database["public"]["Tables"]["property_recommendations"]["Row"];
 export type PropertySearch =
   Database["public"]["Tables"]["property_searches"]["Row"];
 export type SearchOverview =

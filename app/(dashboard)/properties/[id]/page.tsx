@@ -33,6 +33,10 @@ import {
   createTask,
   logActivity,
 } from "@/lib/actions/engagement";
+import {
+  createRecommendation,
+  updateRecommendationStatus,
+} from "@/lib/actions/recommendations";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { getSearchMatchesForProperty } from "@/lib/data/matching";
 import { getOffersForProperty } from "@/lib/data/offers";
@@ -42,6 +46,7 @@ import {
   getPropertyOwners,
   listContactOptions,
 } from "@/lib/data/properties";
+import { getRecommendationsForProperty } from "@/lib/data/recommendations";
 import { getVisitFeedbackForProperty } from "@/lib/data/visit-feedback";
 import { daysSinceNow, formatDate, formatEventDay } from "@/lib/format";
 import {
@@ -53,6 +58,12 @@ import {
   PROPERTY_STATUS_LABELS,
   PROPERTY_TYPE_LABELS,
 } from "@/lib/validations/property";
+import {
+  RECOMMENDATION_CHANNEL_LABELS,
+  RECOMMENDATION_CHANNELS,
+  RECOMMENDATION_STATUS_LABELS,
+  RECOMMENDATION_STATUSES,
+} from "@/lib/validations/recommendation";
 import { TASK_PRIORITY_LABELS, TASK_PRIORITIES } from "@/lib/validations/task";
 
 function formatPrice(price: number | null, currency: string | null) {
@@ -79,6 +90,7 @@ export default async function PropertyDetailPage({
     priceHistory,
     visitFeedback,
     offers,
+    recommendations,
   ] = await Promise.all([
     getPropertyOwners(id),
     listContactOptions(membership.organization.id),
@@ -89,6 +101,7 @@ export default async function PropertyDetailPage({
     getPropertyPriceHistory(id),
     getVisitFeedbackForProperty(id),
     getOffersForProperty(id),
+    getRecommendationsForProperty(id),
   ]);
 
   const pendingTasks = tasks.filter(
@@ -187,6 +200,7 @@ export default async function PropertyDetailPage({
       <Tabs defaultValue="resumen">
         <TabsList>
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
+          <TabsTrigger value="interesados">Interesados</TabsTrigger>
           <TabsTrigger value="visitas">Visitas</TabsTrigger>
           <TabsTrigger value="ofertas">Ofertas</TabsTrigger>
           <TabsTrigger value="actividad">Actividad</TabsTrigger>
@@ -319,7 +333,7 @@ export default async function PropertyDetailPage({
               ) : (
                 <ul className="space-y-3">
                   {matches.map((match) => (
-                    <li key={match.search.id} className="space-y-0.5">
+                    <li key={match.search.id} className="space-y-1">
                       <div className="flex items-center justify-between gap-2">
                         <Link
                           href={`/searches/${match.search.id}`}
@@ -333,6 +347,35 @@ export default async function PropertyDetailPage({
                       <p className="text-muted-foreground text-xs">
                         {match.summary}
                       </p>
+                      <form
+                        action={createRecommendation.bind(
+                          null,
+                          property.id,
+                          match.search.id,
+                          match.search.contact_id,
+                        )}
+                        className="flex items-center gap-2"
+                      >
+                        <Select
+                          name="channel"
+                          defaultValue="whatsapp"
+                          items={RECOMMENDATION_CHANNEL_LABELS}
+                        >
+                          <SelectTrigger className="h-7 w-32 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {RECOMMENDATION_CHANNELS.map((c) => (
+                              <SelectItem key={c} value={c}>
+                                {RECOMMENDATION_CHANNEL_LABELS[c]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="submit" size="sm" variant="outline">
+                          Registrar envío
+                        </Button>
+                      </form>
                     </li>
                   ))}
                 </ul>
@@ -343,6 +386,79 @@ export default async function PropertyDetailPage({
                 balcón/patio/ascensor porque esta propiedad todavía no registra
                 esos datos.
               </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="interesados" className="pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Interesados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recommendations.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  Sin envíos registrados todavía — usá &quot;Registrar
+                  envío&quot; desde Coincidencias, en Resumen, cuando le
+                  presentes esta propiedad a un cliente.
+                </p>
+              ) : (
+                <ul className="space-y-3 text-sm">
+                  {recommendations.map((r) => (
+                    <li key={r.id} className="rounded-md border p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <Link
+                          href={`/contacts/${r.contact_id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {r.contact
+                            ? `${r.contact.first_name} ${r.contact.last_name}`
+                            : "Contacto"}
+                        </Link>
+                        <Badge variant="secondary">
+                          {RECOMMENDATION_STATUS_LABELS[r.status]}
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground text-xs">
+                        {RECOMMENDATION_CHANNEL_LABELS[r.channel]} ·{" "}
+                        {formatEventDay(r.sent_at)}
+                      </p>
+                      {r.notes ? (
+                        <p className="text-muted-foreground">{r.notes}</p>
+                      ) : null}
+                      <form
+                        key={r.updated_at}
+                        action={updateRecommendationStatus.bind(
+                          null,
+                          r.id,
+                          property.id,
+                        )}
+                        className="mt-2 flex items-center gap-2"
+                      >
+                        <Select
+                          name="status"
+                          defaultValue={r.status}
+                          items={RECOMMENDATION_STATUS_LABELS}
+                        >
+                          <SelectTrigger className="h-7 w-40 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {RECOMMENDATION_STATUSES.map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {RECOMMENDATION_STATUS_LABELS[s]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="submit" size="sm" variant="ghost">
+                          Actualizar
+                        </Button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

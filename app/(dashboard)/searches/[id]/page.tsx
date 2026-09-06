@@ -23,6 +23,7 @@ import {
   createTask,
   logActivity,
 } from "@/lib/actions/engagement";
+import { createRecommendation } from "@/lib/actions/recommendations";
 import { requireMembership } from "@/lib/auth/session";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { getPropertyMatchesForSearch } from "@/lib/data/matching";
@@ -36,6 +37,10 @@ import {
   OPERATION_TYPE_LABELS,
   PROPERTY_TYPE_LABELS,
 } from "@/lib/validations/property";
+import {
+  RECOMMENDATION_CHANNEL_LABELS,
+  RECOMMENDATION_CHANNELS,
+} from "@/lib/validations/recommendation";
 import {
   SEARCH_OBJECTIVE_LABELS,
   SEARCH_STATUS_LABELS,
@@ -170,7 +175,7 @@ export default async function SearchDetailPage({
           ) : (
             <ul className="space-y-3">
               {matches.map((match) => (
-                <li key={match.property.id} className="space-y-0.5">
+                <li key={match.property.id} className="space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     <Link
                       href={`/properties/${match.property.id}`}
@@ -183,6 +188,35 @@ export default async function SearchDetailPage({
                   <p className="text-muted-foreground text-xs">
                     {match.summary}
                   </p>
+                  <form
+                    action={createRecommendation.bind(
+                      null,
+                      match.property.id,
+                      search.id,
+                      search.contact_id,
+                    )}
+                    className="flex items-center gap-2"
+                  >
+                    <Select
+                      name="channel"
+                      defaultValue="whatsapp"
+                      items={RECOMMENDATION_CHANNEL_LABELS}
+                    >
+                      <SelectTrigger className="h-7 w-32 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RECOMMENDATION_CHANNELS.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {RECOMMENDATION_CHANNEL_LABELS[c]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button type="submit" size="sm" variant="outline">
+                      Registrar envío
+                    </Button>
+                  </form>
                 </li>
               ))}
             </ul>

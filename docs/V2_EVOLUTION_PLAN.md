@@ -398,7 +398,40 @@ Detalle original del plan:
 
 ---
 
-## Bloque G — Matching
+## Bloque G — Matching ✅ implementado
+
+Implementado tal como se planeó, sin tocar ningún archivo de la Fase 11
+(`lib/matching/score.ts`/`lib/data/matching.ts` quedaron intactos) —
+"Registrar envío" se agregó al lado de cada match, en las páginas, no
+adentro de esa lógica.
+
+- Nueva tab "Interesados" en la ficha de propiedad (junto a "Visitas" y
+  "Ofertas" de los Bloques D/E) con el historial de envíos y control de
+  estado (enviada/interesado/no interesado/visita agendada).
+- Nueva card "Propiedades presentadas" en la ficha de cliente.
+- `createRecommendation`/`updateRecommendationStatus` viven en
+  `lib/actions/recommendations.ts` (no en `app/(dashboard)/properties/`
+  ni `.../searches/`) porque ambas rutas las necesitan por igual — mismo
+  criterio que `lib/actions/engagement.ts`.
+- **Bug real encontrado y corregido (código de este mismo bloque):**
+  actualizar el estado de un envío disparaba el warning de Base UI "a
+  component is changing the default value state of an uncontrolled
+  Select after being initialized" — exactamente el mismo gotcha ya
+  documentado en la Fase 6 (un formulario que revalida en el lugar, sin
+  redirect, con un control cuyo valor por defecto cambia bajo un mismo
+  montaje), esta vez sobre un `Select` en vez de un `Input`. Mismo fix:
+  `key={r.updated_at}` en el `<form>` para forzar un remount limpio —
+  agregado `updated_at` a la consulta de `lib/data/recommendations.ts`
+  para tenerlo disponible.
+- Verificado end-to-end contra Supabase real: "Registrar envío" desde
+  Coincidencias en ambas direcciones (propiedad→búsquedas y
+  búsqueda→propiedades) crea el registro correcto; la tab Interesados y
+  la card de cliente lo muestran; tres cambios de estado consecutivos
+  (enviada → interesado → visita agendada → no interesado) sin volver a
+  disparar el warning de Select después del fix. Sin errores de
+  servidor.
+
+Detalle original del plan:
 
 **Ya implementado en Fase 11** (`lib/matching/score.ts`, `lib/data/matching.ts`,
 tabs "Coincidencias" en `/searches/[id]` y `/properties/[id]`) con score

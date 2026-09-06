@@ -678,6 +678,26 @@ contraoferta; es un dato que el asesor ya tiene con solo leer fecha/monto,
 y agregar una columna para esto sin un caso de uso que lo pidiera hubiera
 sido anticipar de más.
 
+## V2 bloque G — `property_recommendations`
+
+`id, organization_id, property_id, search_id, contact_id, sent_at,
+channel, status, notes, created_by, created_at, updated_at`. RLS estándar.
+
+Distinta de un match de la Fase 11 (`lib/matching/score.ts`): un match es
+un score calculado al vuelo, nunca persistido; esta tabla registra que
+una propiedad efectivamente se le envió a un cliente para una búsqueda
+puntual — "Registrar envío" desde Coincidencias, en ambas fichas
+(propiedad y búsqueda).
+
+`search_id` + `contact_id` son deliberadamente redundantes (`contact_id`
+ya es derivable de `search_id`) — se guardan los dos para no forzar un
+join en cada consulta desde la ficha de cliente, mismo criterio de
+denormalización controlada que otras vistas `*_overview` del proyecto.
+
+Sin `unique (property_id, search_id)`: volver a presentar la misma
+propiedad más adelante (por ejemplo tras una baja de precio) es una
+acción real, no un error a impedir.
+
 ## Índices previstos (más allá de las PK/FK)
 
 `organization_id`, `contact_id`, `property_id`, `status`, `due_at`,

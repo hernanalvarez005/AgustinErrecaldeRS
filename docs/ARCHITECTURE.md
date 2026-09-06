@@ -290,6 +290,17 @@ misma ruta (server action sin `redirect`, solo `revalidatePath`) con
 inputs no controlados que arrancan vacíos — no a los que redirigen a otra
 página al guardar (esos sí remontan solos, por el cambio de ruta).
 
+**Reaparecido en V2 bloque G**, esta vez sí en un `Select`: el control de
+estado de "Interesados" (`updateRecommendationStatus`, sin `redirect`,
+misma página) mostraba el mismo warning al cambiar el estado de un envío
+ya existente — el `Select` monta con `defaultValue={r.status}` la primera
+vez y, tras revalidar, recibe un `defaultValue` distinto sobre la misma
+instancia. Mismo fix exacto: `key={r.updated_at}` en el `<form>` que lo
+contiene. Confirma que la regla de arriba es genérica y no específica de
+`deals` — cualquier control no controlado (`Input`, `Select`, lo que sea)
+dentro de un formulario "revalida en el lugar" necesita esta `key` si su
+valor puede cambiar de un guardado al siguiente.
+
 ## Gotcha verificado: "hoy" calculado con la zona horaria equivocada
 
 Encontrado planificando Fase 7 (`/today`), antes de tocar nada:
