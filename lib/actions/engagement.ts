@@ -17,6 +17,11 @@ function revalidateContext(context: EngagementContext) {
   if (context.searchId) revalidatePath(`/searches/${context.searchId}`);
   if (context.leadId) revalidatePath(`/leads/${context.leadId}`);
   if (context.dealId) revalidatePath(`/deals/${context.dealId}`);
+  // "Hoy" (Fase V2 bloque A) shows tasks/activities from every entity type
+  // mixed together, so any engagement mutation can change what it displays
+  // — revalidate it unconditionally rather than trying to guess when a
+  // change is "relevant enough" to Today.
+  revalidatePath("/today");
 }
 
 export async function addNote(context: EngagementContext, formData: FormData) {
@@ -86,6 +91,34 @@ export async function completeTask(context: EngagementContext, taskId: string) {
     .update({ status: "completed", completed_at: new Date().toISOString() })
     .eq("id", taskId);
   if (error) console.error("Failed to complete task:", error.message);
+
+  revalidateContext(context);
+}
+
+/**
+ * Pushes a task's due date out — the "Reprogramar" quick action (V2 bloque
+ * A). Bound as a form action (same convention as `completeTask`), so the
+ * final argument is the submitted `FormData`, not a plain value — its
+ * `newDueDate` field is a "YYYY-MM-DD" string from an `<input
+ * type="date">`, same convention as `createTask`'s `dueAt` (bare date
+ * parses as UTC midnight, matching how due_at is compared elsewhere — see
+ * lib/date.ts).
+ */
+export async function rescheduleTask(
+  context: EngagementContext,
+  taskId: string,
+  formData: FormData,
+) {
+  await requireMembership();
+  const newDueDate = formData.get("newDueDate");
+  if (typeof newDueDate !== "string" || !newDueDate) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ due_at: new Date(newDueDate).toISOString() })
+    .eq("id", taskId);
+  if (error) console.error("Failed to reschedule task:", error.message);
 
   revalidateContext(context);
 }

@@ -59,3 +59,22 @@ export function formatDateTime(value: string | null | undefined) {
     timeZone: BUSINESS_TIMEZONE,
   });
 }
+
+/**
+ * "hace 18 min" / "hace 3 h" / "hace 2 d" — for a real timestamp
+ * (`leads.created_at`), not a calendar date. This diffs two real instants
+ * (now vs. `value`), so unlike the helpers above there is no business-vs-UTC
+ * timezone question here — a duration between two instants is the same
+ * number of seconds everywhere.
+ */
+export function formatRelativeTime(value: string | null | undefined) {
+  if (!value) return null;
+  const diffMs = Date.now() - new Date(value).getTime();
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return "recién";
+  if (minutes < 60) return `hace ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `hace ${days} d`;
+}
