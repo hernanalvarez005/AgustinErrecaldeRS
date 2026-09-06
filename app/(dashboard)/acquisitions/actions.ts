@@ -150,7 +150,10 @@ export async function createValuation(
     valuationDate: formData.get("valuationDate"),
     notes: formData.get("notes"),
   });
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    console.error("Invalid valuation input:", parsed.error.issues);
+    return;
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("valuations").insert({

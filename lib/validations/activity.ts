@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { emptyToUndefined } from "@/lib/validations/shared";
 import type { ActivityType } from "@/types/database.types";
 
 // The quick-log actions exposed from contact/property/acquisition pages.
@@ -34,8 +35,6 @@ export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
   follow_up: "Seguimiento",
   other: "Otro",
 };
-
-const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
 
 export const activitySchema = z.object({
   type: z.enum(LOGGABLE_ACTIVITY_TYPES),

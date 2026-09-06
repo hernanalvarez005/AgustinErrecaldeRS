@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { CONTACT_SOURCES } from "@/lib/validations/contact";
+import { emptyToUndefined } from "@/lib/validations/shared";
 import type { AcquisitionStatus } from "@/types/database.types";
 
 export const ACQUISITION_STATUSES: AcquisitionStatus[] = [
@@ -41,7 +42,6 @@ export const ACQUISITION_KANBAN_COLUMNS: AcquisitionStatus[] = [
   "lost",
 ];
 
-const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
 const numberOrUndefined = z.preprocess(
   (value) =>
     value === "" || value === null || value === undefined

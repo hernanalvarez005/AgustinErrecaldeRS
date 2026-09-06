@@ -153,3 +153,48 @@ con ese único valor y se muestra el nombre como texto plano (ver
 `app/(dashboard)/properties/[id]/page.tsx`, selector de propietarios). Si
 aparece un nuevo `Select` con una lista que puede tener un solo elemento
 (no un enum fijo con 2+ opciones), aplicar el mismo patrón.
+
+## Gotcha verificado: `FormData.get()` devuelve `null`, no `""`
+
+Encontrado en Fase 3 al agregar una tasación: un campo opcional que no tiene
+`<input>` en el formulario (`valuationDate`, olvidado en el primer borrador
+del form) hace que `formData.get("valuationDate")` devuelva `null` — no
+`""` como un input de texto vacío. El helper `emptyToUndefined` de
+`lib/validations/*.ts` solo contemplaba `""`, así que Zod rechazaba `null`
+contra `z.string().optional()` y la acción fallaba **en silencio** (`if
+(!parsed.success) return;` sin loguear nada). Dos correcciones:
+
+1. `emptyToUndefined` se centralizó en `lib/validations/shared.ts` y ahora
+   trata `""` y `null` igual. Los 6 esquemas que lo definían por separado
+   importan la versión compartida.
+2. Todo `if (!parsed.success) return;` en `lib/actions/engagement.ts` y las
+   acciones de captaciones ahora loguea `parsed.error.issues` antes de
+   volver — un fallo de validación en un server action nunca debe ser
+   silencioso, aunque no se le muestre el detalle al usuario.
+
+## Gotchas verificados: `@dnd-kit/core` + Server Components
+
+Encontrados armando el Kanban de captaciones, probando contra datos reales:
+
+- **Un click sin arrastre puede no abrir el link de la tarjeta.**
+  `PointerSensor` sin `activationConstraint` interpreta cualquier click como
+  un posible drag de distancia cero. Con `useSensor(PointerSensor, {
+activationConstraint: { distance: 8 } })` un click real (sin mover el
+  mouse más de 8px) pasa de largo al `<Link>` de la tarjeta.
+- **Mismatch de hidratación real y reproducible en `aria-describedby`,
+  no un artefacto de test.** dnd-kit arma el id del elemento accesible
+  (`DndDescribedBy-N`) con un contador interno que arranca en 0 en cada
+  render de servidor pero sigue subiendo en el cliente con cada
+  navegación (el `KanbanBoard` se vuelve a montar sin recargar la página).
+  Se reprodujo navegando ida y vuelta a `/acquisitions` un par de veces.
+  Fix: pasarle un `id` fijo a `<DndContext id="acquisitions-kanban">` en
+  vez de dejar que dnd-kit genere el suyo.
+- **"changed size between renders" en consola.** `useSensor(PointerSensor,
+{ activationConstraint: {...} })` con un objeto de opciones creado
+  inline se recrea en cada render, rompiendo la memoización interna de
+  dnd-kit. Solución: la constante de opciones vive a nivel de módulo
+  (`POINTER_SENSOR_OPTIONS`), no dentro del componente.
+
+Los tres fixes están en `components/acquisitions/kanban-board.tsx`. Si se
+arma otro `DndContext` (Fase 6, operaciones), aplicar los tres desde el
+principio en vez de redescubrirlos.

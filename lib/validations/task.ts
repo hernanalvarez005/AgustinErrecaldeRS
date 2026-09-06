@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { emptyToUndefined } from "@/lib/validations/shared";
 import type { TaskPriority } from "@/types/database.types";
 
 export const TASK_PRIORITIES: TaskPriority[] = [
@@ -15,8 +16,6 @@ export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
   high: "Alta",
   urgent: "Urgente",
 };
-
-const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
 
 export const taskSchema = z.object({
   title: z.string().trim().min(1, "Ingresá un título para la tarea."),

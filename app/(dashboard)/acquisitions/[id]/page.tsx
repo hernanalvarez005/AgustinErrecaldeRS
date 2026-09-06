@@ -201,6 +201,7 @@ export default async function AcquisitionDetailPage({
                   <SelectItem value="USD">USD</SelectItem>
                 </SelectContent>
               </Select>
+              <Input name="valuationDate" type="date" />
               <Input
                 name="recommendedListingPrice"
                 type="number"

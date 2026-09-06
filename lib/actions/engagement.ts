@@ -19,7 +19,10 @@ function revalidateContext(context: EngagementContext) {
 export async function addNote(context: EngagementContext, formData: FormData) {
   const membership = await requireMembership();
   const parsed = noteSchema.safeParse({ body: formData.get("body") });
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    console.error("Invalid input:", parsed.error.issues);
+    return;
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("notes").insert({
@@ -44,7 +47,10 @@ export async function createTask(
     priority: formData.get("priority") || undefined,
     dueAt: formData.get("dueAt"),
   });
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    console.error("Invalid input:", parsed.error.issues);
+    return;
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("tasks").insert({
@@ -84,7 +90,10 @@ export async function logActivity(
     type: formData.get("type"),
     description: formData.get("description"),
   });
-  if (!parsed.success) return;
+  if (!parsed.success) {
+    console.error("Invalid input:", parsed.error.issues);
+    return;
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("activities").insert({

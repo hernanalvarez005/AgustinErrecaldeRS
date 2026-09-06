@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
+import { emptyToUndefined } from "@/lib/validations/shared";
 const numberOrUndefined = z.preprocess(
   (value) =>
     value === "" || value === null || value === undefined

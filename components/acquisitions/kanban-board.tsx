@@ -3,8 +3,11 @@
 import {
   DndContext,
   DragOverlay,
+  PointerSensor,
   useDraggable,
   useDroppable,
+  useSensor,
+  useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import Link from "next/link";
@@ -17,6 +20,18 @@ import {
   ACQUISITION_STATUS_LABELS,
 } from "@/lib/validations/acquisition";
 import type { AcquisitionStatus } from "@/types/database.types";
+
+// Stable references, defined once at module scope:
+// - `POINTER_SENSOR_OPTIONS` as a fresh object literal on every render would
+//   break useSensor's internal memoization, which triggered a real "final
+//   argument changed size between renders" warning from dnd-kit.
+// - `DND_CONTEXT_ID` replaces dnd-kit's own auto-incrementing id (used to
+//   build the `aria-describedby` on each draggable). That counter starts
+//   over at 0 on every server render but keeps climbing across client-side
+//   navigations within the same session, producing a real, reproducible
+//   hydration mismatch — not a testing artifact. A fixed id sidesteps it.
+const POINTER_SENSOR_OPTIONS = { activationConstraint: { distance: 8 } };
+const DND_CONTEXT_ID = "acquisitions-kanban";
 
 export type KanbanAcquisition = {
   id: string;
@@ -55,9 +70,6 @@ function AcquisitionCard({ acquisition }: { acquisition: KanbanAcquisition }) {
       <Link
         href={`/acquisitions/${acquisition.id}`}
         className="font-medium hover:underline"
-        // Dragging starts on pointerdown; without stopping propagation a
-        // click-through still fires after a drag, navigating unexpectedly.
-        onClick={(e) => isDragging && e.preventDefault()}
       >
         {acquisition.property?.title ?? "Propiedad sin título"}
       </Link>
@@ -120,6 +132,11 @@ export function KanbanBoard({
 }) {
   const [items, setItems] = useState(acquisitions);
   const [, startTransition] = useTransition();
+  // Without an activation constraint, PointerSensor treats a plain click as
+  // a zero-distance drag and swallows the click event — the card's <Link>
+  // never navigates. Requiring 8px of movement before a drag "starts" lets
+  // an actual click pass through normally.
+  const sensors = useSensors(useSensor(PointerSensor, POINTER_SENSOR_OPTIONS));
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -141,7 +158,7 @@ export function KanbanBoard({
   }
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext id={DND_CONTEXT_ID} sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="flex gap-4 overflow-x-auto pb-4">
         {ACQUISITION_KANBAN_COLUMNS.map((status) => (
           <KanbanColumn

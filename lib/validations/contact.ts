@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { emptyToUndefined } from "@/lib/validations/shared";
 import type { ContactRole, ContactSource } from "@/types/database.types";
 
 export const CONTACT_ROLES: ContactRole[] = [
@@ -53,8 +54,6 @@ export const CONTACT_SOURCE_LABELS: Record<ContactSource, string> = {
   own_database: "Base propia",
   other: "Otro",
 };
-
-const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
 
 export const contactSchema = z.object({
   firstName: z.string().trim().min(1, "Ingresá el nombre."),

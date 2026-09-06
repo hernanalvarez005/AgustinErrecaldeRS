@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { emptyToUndefined } from "@/lib/validations/shared";
 import type {
   OperationType,
   PropertyStatus,
@@ -66,7 +67,6 @@ export const PROPERTY_STATUS_LABELS: Record<PropertyStatus, string> = {
   archived: "Archivada",
 };
 
-const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
 const numberOrUndefined = z.preprocess(
   (value) =>
     value === "" || value === null || value === undefined
