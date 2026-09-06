@@ -1,7 +1,8 @@
-import { Mail, MessageCircle, Pencil, Phone } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { addOwner, removeOwner } from "@/app/(dashboard)/properties/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,54 +16,67 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { buildTimeline, Timeline } from "@/components/contacts/timeline";
+import { requireMembership } from "@/lib/auth/session";
 import {
   addNote,
   completeTask,
   createTask,
   logActivity,
 } from "@/lib/actions/engagement";
-import { getContact, getContactRoles } from "@/lib/data/contacts";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
-import { formatDate, formatDateTime } from "@/lib/format";
-import { toWhatsAppLink } from "@/lib/phone";
+import {
+  getProperty,
+  getPropertyOwners,
+  listContactOptions,
+} from "@/lib/data/properties";
+import { formatDate } from "@/lib/format";
 import {
   ACTIVITY_TYPE_LABELS,
   LOGGABLE_ACTIVITY_TYPES,
 } from "@/lib/validations/activity";
-import { CONTACT_ROLE_LABELS } from "@/lib/validations/contact";
+import {
+  OPERATION_TYPE_LABELS,
+  PROPERTY_STATUS_LABELS,
+  PROPERTY_TYPE_LABELS,
+} from "@/lib/validations/property";
 import { TASK_PRIORITY_LABELS, TASK_PRIORITIES } from "@/lib/validations/task";
 
-export default async function ContactDetailPage({
+function formatPrice(price: number | null, currency: string | null) {
+  if (price === null || currency === null) return null;
+  return `${currency} ${price.toLocaleString("es-AR")}`;
+}
+
+export default async function PropertyDetailPage({
   params,
-}: PageProps<"/contacts/[id]">) {
+}: PageProps<"/properties/[id]">) {
   const { id } = await params;
+  const membership = await requireMembership();
 
-  const [contact, roles, notes, tasks, activities] = await Promise.all([
-    getContact(id),
-    getContactRoles(id),
-    getNotes({ contactId: id }),
-    getTasks({ contactId: id }),
-    getActivities({ contactId: id }),
-  ]);
+  const [property, owners, contactOptions, notes, tasks, activities] =
+    await Promise.all([
+      getProperty(id),
+      getPropertyOwners(id),
+      listContactOptions(membership.organization.id),
+      getNotes({ propertyId: id }),
+      getTasks({ propertyId: id }),
+      getActivities({ propertyId: id }),
+    ]);
 
-  if (!contact) notFound();
+  if (!property) notFound();
 
   const pendingTasks = tasks.filter(
     (t) => t.status === "pending" || t.status === "in_progress",
   );
-  const lastInteraction = activities
-    .filter((a) => a.status === "completed")
-    .sort(
-      (a, b) =>
-        new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime(),
-    )[0];
-  const nextAction = pendingTasks
-    .filter((t) => t.due_at)
-    .sort(
-      (a, b) =>
-        new Date(a.due_at as string).getTime() -
-        new Date(b.due_at as string).getTime(),
-    )[0];
+  const price = formatPrice(property.price, property.currency);
+  const address = [property.street, property.street_number]
+    .filter(Boolean)
+    .join(" ");
+  const zone = [property.neighborhood, property.city]
+    .filter(Boolean)
+    .join(", ");
+  const availableContacts = contactOptions.filter(
+    (c) => !owners.some((o) => o.contact_id === c.id),
+  );
 
   const timeline = buildTimeline({ notes, activities, tasks });
 
@@ -72,10 +86,10 @@ export default async function ContactDetailPage({
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">
-              {contact.first_name} {contact.last_name}
+              {property.title}
             </h1>
             <Button
-              render={<Link href={`/contacts/${contact.id}/edit`} />}
+              render={<Link href={`/properties/${property.id}/edit`} />}
               nativeButton={false}
               variant="ghost"
               size="icon-sm"
@@ -84,67 +98,113 @@ export default async function ContactDetailPage({
             </Button>
           </div>
           <div className="flex flex-wrap gap-1">
-            {roles.length === 0 ? (
-              <span className="text-muted-foreground text-sm">
-                Sin roles asignados
-              </span>
-            ) : (
-              roles.map((role) => (
-                <Badge key={role} variant="secondary">
-                  {CONTACT_ROLE_LABELS[role]}
-                </Badge>
-              ))
-            )}
+            <Badge variant="secondary">
+              {PROPERTY_TYPE_LABELS[property.property_type]}
+            </Badge>
+            <Badge variant="secondary">
+              {OPERATION_TYPE_LABELS[property.operation_type]}
+            </Badge>
+            <Badge>{PROPERTY_STATUS_LABELS[property.status]}</Badge>
           </div>
-          <div className="flex flex-wrap gap-3 text-sm">
-            {contact.phone ? (
-              <a
-                href={`tel:${contact.phone}`}
-                className="flex items-center gap-1 hover:underline"
-              >
-                <Phone className="size-3.5" /> {contact.phone}
-              </a>
-            ) : null}
-            {contact.whatsapp || contact.phone ? (
-              <a
-                href={toWhatsAppLink(contact.whatsapp || contact.phone || "")}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 hover:underline"
-              >
-                <MessageCircle className="size-3.5" /> WhatsApp
-              </a>
-            ) : null}
-            {contact.email ? (
-              <a
-                href={`mailto:${contact.email}`}
-                className="flex items-center gap-1 hover:underline"
-              >
-                <Mail className="size-3.5" /> {contact.email}
-              </a>
-            ) : null}
-          </div>
+          <p className="text-muted-foreground text-sm">
+            {[address, zone].filter(Boolean).join(" · ") ||
+              "Sin dirección cargada"}
+            {price ? ` · ${price}` : ""}
+          </p>
         </div>
       </div>
 
       <Card>
-        <CardContent className="grid grid-cols-2 gap-4 pt-6 text-sm">
-          <div>
-            <dt className="text-muted-foreground">Última interacción</dt>
-            <dd>
-              {lastInteraction
-                ? formatDateTime(lastInteraction.starts_at)
-                : "—"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Próxima acción</dt>
-            <dd>
-              {nextAction
-                ? `${nextAction.title} · ${formatDate(nextAction.due_at)}`
-                : "—"}
-            </dd>
-          </div>
+        <CardHeader>
+          <CardTitle className="text-sm">Propietarios</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {owners.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Sin propietarios asociados.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {owners.map((owner) => (
+                <li
+                  key={owner.contact_id}
+                  className="flex items-center justify-between gap-2 text-sm"
+                >
+                  <div>
+                    <Link
+                      href={`/contacts/${owner.contact_id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {owner.contact.first_name} {owner.contact.last_name}
+                    </Link>
+                    <span className="text-muted-foreground">
+                      {owner.is_primary_contact ? " · Principal" : ""}
+                      {owner.ownership_percentage
+                        ? ` · ${owner.ownership_percentage}%`
+                        : ""}
+                    </span>
+                  </div>
+                  <form
+                    action={removeOwner.bind(
+                      null,
+                      property.id,
+                      owner.contact_id,
+                    )}
+                  >
+                    <Button type="submit" size="icon-sm" variant="ghost">
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {availableContacts.length > 0 ? (
+            <form
+              action={addOwner.bind(null, property.id)}
+              className="flex flex-wrap items-end gap-2 border-t pt-4"
+            >
+              <Select
+                name="contactId"
+                items={Object.fromEntries(
+                  availableContacts.map((c) => [
+                    c.id,
+                    `${c.first_name} ${c.last_name}`,
+                  ]),
+                )}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Elegir contacto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableContacts.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.first_name} {c.last_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                name="ownershipPercentage"
+                type="number"
+                step="0.01"
+                placeholder="% (opcional)"
+                className="w-32"
+              />
+              <label className="flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  name="isPrimaryContact"
+                  className="border-input size-4 rounded"
+                />
+                Principal
+              </label>
+              <Button type="submit" variant="outline">
+                Agregar propietario
+              </Button>
+            </form>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -154,7 +214,7 @@ export default async function ContactDetailPage({
         </CardHeader>
         <CardContent>
           <form
-            action={logActivity.bind(null, { contactId: contact.id })}
+            action={logActivity.bind(null, { propertyId: property.id })}
             className="flex flex-wrap items-end gap-2"
           >
             <Select
@@ -216,7 +276,7 @@ export default async function ContactDetailPage({
                   <form
                     action={completeTask.bind(
                       null,
-                      { contactId: contact.id },
+                      { propertyId: property.id },
                       task.id,
                     )}
                   >
@@ -230,7 +290,7 @@ export default async function ContactDetailPage({
           )}
 
           <form
-            action={createTask.bind(null, { contactId: contact.id })}
+            action={createTask.bind(null, { propertyId: property.id })}
             className="flex flex-wrap items-end gap-2 border-t pt-4"
           >
             <Input
@@ -269,7 +329,7 @@ export default async function ContactDetailPage({
         </CardHeader>
         <CardContent className="space-y-4">
           <form
-            action={addNote.bind(null, { contactId: contact.id })}
+            action={addNote.bind(null, { propertyId: property.id })}
             className="space-y-2"
           >
             <Textarea name="body" placeholder="Agregar una nota..." required />

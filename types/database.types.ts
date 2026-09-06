@@ -68,6 +68,30 @@ export type ActivityType =
 
 export type ActivityStatus = "scheduled" | "completed" | "cancelled";
 
+export type PropertyType =
+  | "apartment"
+  | "house"
+  | "ph"
+  | "land"
+  | "office"
+  | "commercial"
+  | "warehouse"
+  | "other";
+
+export type OperationType = "sale" | "rent" | "temporary_rent";
+
+export type PropertyStatus =
+  | "draft"
+  | "valuation"
+  | "capturing"
+  | "active"
+  | "reserved"
+  | "sold"
+  | "rented"
+  | "paused"
+  | "lost"
+  | "archived";
+
 export interface Database {
   public: {
     Tables: {
@@ -222,6 +246,7 @@ export interface Database {
           organization_id: string;
           body: string;
           contact_id: string | null;
+          property_id: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -231,6 +256,7 @@ export interface Database {
           organization_id: string;
           body: string;
           contact_id?: string | null;
+          property_id?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -245,6 +271,7 @@ export interface Database {
           title: string;
           description: string | null;
           contact_id: string | null;
+          property_id: string | null;
           priority: TaskPriority;
           due_at: string | null;
           status: TaskStatus;
@@ -260,6 +287,7 @@ export interface Database {
           title: string;
           description?: string | null;
           contact_id?: string | null;
+          property_id?: string | null;
           priority?: TaskPriority;
           due_at?: string | null;
           status?: TaskStatus;
@@ -280,6 +308,7 @@ export interface Database {
           title: string | null;
           description: string | null;
           contact_id: string | null;
+          property_id: string | null;
           starts_at: string;
           ends_at: string | null;
           status: ActivityStatus;
@@ -297,6 +326,7 @@ export interface Database {
           title?: string | null;
           description?: string | null;
           contact_id?: string | null;
+          property_id?: string | null;
           starts_at?: string;
           ends_at?: string | null;
           status?: ActivityStatus;
@@ -310,6 +340,106 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["activities"]["Insert"]>;
         Relationships: [];
       };
+      properties: {
+        Row: {
+          id: string;
+          organization_id: string;
+          title: string;
+          property_type: PropertyType;
+          operation_type: OperationType;
+          street: string | null;
+          street_number: string | null;
+          floor: string | null;
+          unit: string | null;
+          city: string | null;
+          neighborhood: string | null;
+          province: string | null;
+          country: string;
+          latitude: number | null;
+          longitude: number | null;
+          price: number | null;
+          currency: "ARS" | "USD" | null;
+          bedrooms: number | null;
+          bathrooms: number | null;
+          garage_spaces: number | null;
+          total_area: number | null;
+          covered_area: number | null;
+          uncovered_area: number | null;
+          lot_area: number | null;
+          expenses: number | null;
+          age_years: number | null;
+          description: string | null;
+          internal_notes: string | null;
+          status: PropertyStatus;
+          publication_url: string | null;
+          external_reference: string | null;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          title: string;
+          property_type: PropertyType;
+          operation_type: OperationType;
+          street?: string | null;
+          street_number?: string | null;
+          floor?: string | null;
+          unit?: string | null;
+          city?: string | null;
+          neighborhood?: string | null;
+          province?: string | null;
+          country?: string;
+          latitude?: number | null;
+          longitude?: number | null;
+          price?: number | null;
+          currency?: "ARS" | "USD" | null;
+          bedrooms?: number | null;
+          bathrooms?: number | null;
+          garage_spaces?: number | null;
+          total_area?: number | null;
+          covered_area?: number | null;
+          uncovered_area?: number | null;
+          lot_area?: number | null;
+          expenses?: number | null;
+          age_years?: number | null;
+          description?: string | null;
+          internal_notes?: string | null;
+          status?: PropertyStatus;
+          publication_url?: string | null;
+          external_reference?: string | null;
+          archived_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["properties"]["Insert"]>;
+        Relationships: [];
+      };
+      property_owners: {
+        Row: {
+          property_id: string;
+          contact_id: string;
+          ownership_percentage: number | null;
+          is_primary_contact: boolean;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          property_id: string;
+          contact_id: string;
+          ownership_percentage?: number | null;
+          is_primary_contact?: boolean;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["property_owners"]["Insert"]
+        >;
+        Relationships: [];
+      };
     };
     Views: {
       contact_overview: {
@@ -317,6 +447,12 @@ export interface Database {
           roles: ContactRole[] | null;
           last_interaction_at: string | null;
           next_action_at: string | null;
+        };
+        Relationships: [];
+      };
+      property_overview: {
+        Row: Database["public"]["Tables"]["properties"]["Row"] & {
+          primary_owner_name: string | null;
         };
         Relationships: [];
       };
@@ -347,3 +483,8 @@ export type ContactOverview =
 export type Note = Database["public"]["Tables"]["notes"]["Row"];
 export type Task = Database["public"]["Tables"]["tasks"]["Row"];
 export type Activity = Database["public"]["Tables"]["activities"]["Row"];
+export type Property = Database["public"]["Tables"]["properties"]["Row"];
+export type PropertyOverview =
+  Database["public"]["Views"]["property_overview"]["Row"];
+export type PropertyOwner =
+  Database["public"]["Tables"]["property_owners"]["Row"];

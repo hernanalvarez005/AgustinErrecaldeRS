@@ -6,10 +6,7 @@ import { redirect } from "next/navigation";
 import { requireMembership } from "@/lib/auth/session";
 import { findPossibleDuplicates } from "@/lib/data/contacts";
 import { createClient } from "@/lib/supabase/server";
-import { activitySchema } from "@/lib/validations/activity";
 import { contactSchema, parseRolesField } from "@/lib/validations/contact";
-import { noteSchema } from "@/lib/validations/note";
-import { taskSchema } from "@/lib/validations/task";
 
 function contactFieldsFromFormData(formData: FormData) {
   return {
@@ -149,77 +146,4 @@ export async function updateContact(
 
   revalidatePath("/contacts");
   redirect(`/contacts/${contactId}`);
-}
-
-export async function addNote(contactId: string, formData: FormData) {
-  const membership = await requireMembership();
-  const parsed = noteSchema.safeParse({ body: formData.get("body") });
-  if (!parsed.success) return;
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("notes").insert({
-    organization_id: membership.organization.id,
-    contact_id: contactId,
-    body: parsed.data.body,
-  });
-  if (error) console.error("Failed to add note:", error.message);
-
-  revalidatePath(`/contacts/${contactId}`);
-}
-
-export async function createTask(contactId: string, formData: FormData) {
-  const membership = await requireMembership();
-  const parsed = taskSchema.safeParse({
-    title: formData.get("title"),
-    priority: formData.get("priority") || undefined,
-    dueAt: formData.get("dueAt"),
-  });
-  if (!parsed.success) return;
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("tasks").insert({
-    organization_id: membership.organization.id,
-    contact_id: contactId,
-    title: parsed.data.title,
-    priority: parsed.data.priority,
-    due_at: parsed.data.dueAt
-      ? new Date(parsed.data.dueAt).toISOString()
-      : null,
-  });
-  if (error) console.error("Failed to create task:", error.message);
-
-  revalidatePath(`/contacts/${contactId}`);
-}
-
-export async function completeTask(contactId: string, taskId: string) {
-  await requireMembership();
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("tasks")
-    .update({ status: "completed", completed_at: new Date().toISOString() })
-    .eq("id", taskId);
-  if (error) console.error("Failed to complete task:", error.message);
-
-  revalidatePath(`/contacts/${contactId}`);
-}
-
-export async function logActivity(contactId: string, formData: FormData) {
-  const membership = await requireMembership();
-  const parsed = activitySchema.safeParse({
-    type: formData.get("type"),
-    description: formData.get("description"),
-  });
-  if (!parsed.success) return;
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("activities").insert({
-    organization_id: membership.organization.id,
-    contact_id: contactId,
-    type: parsed.data.type,
-    description: parsed.data.description ?? null,
-    status: "completed",
-  });
-  if (error) console.error("Failed to log activity:", error.message);
-
-  revalidatePath(`/contacts/${contactId}`);
 }

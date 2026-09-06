@@ -68,48 +68,6 @@ export async function getContactRoles(contactId: string) {
   return data.map((row) => row.role);
 }
 
-export async function getContactNotes(contactId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("notes")
-    .select("id, body, created_at")
-    .eq("contact_id", contactId)
-    .order("created_at", { ascending: false });
-  if (error) {
-    console.error("Failed to load notes:", error.message);
-    return [];
-  }
-  return data;
-}
-
-export async function getContactTasks(contactId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("tasks")
-    .select("id, title, priority, due_at, status, completed_at")
-    .eq("contact_id", contactId)
-    .order("due_at", { ascending: true, nullsFirst: false });
-  if (error) {
-    console.error("Failed to load tasks:", error.message);
-    return [];
-  }
-  return data;
-}
-
-export async function getContactActivities(contactId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("activities")
-    .select("id, type, description, starts_at, status")
-    .eq("contact_id", contactId)
-    .order("starts_at", { ascending: false });
-  if (error) {
-    console.error("Failed to load activities:", error.message);
-    return [];
-  }
-  return data;
-}
-
 /**
  * Looks for existing contacts that share a phone, email, or DNI with the
  * given input — used to warn before creating a likely duplicate (never to

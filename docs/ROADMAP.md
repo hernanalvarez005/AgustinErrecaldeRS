@@ -38,11 +38,24 @@ Pendiente de esta fase, movido a después: tests automatizados (unit/RLS) —
 no bloquearon el MVP funcional pero quedan como deuda a pagar antes de sumar
 más superficie (ver docs/ARCHITECTURE.md).
 
-## Fase 2 — Propiedades
+## Fase 2 — Propiedades ✅
 
-- Tablas: `properties`, `property_owners`.
-- Listado con filtros (estado, operación, zona, precio, propietario) y ficha
-  con timeline.
+- Tablas: `properties`, `property_owners` (+RLS), vista `property_overview`
+  para el listado sin N+1. `notes`/`tasks`/`activities` ganaron `property_id`
+  (columna nullable, sin tocar la migración de Fase 1).
+- Se generalizó la capa de notas/tareas/actividades (`lib/data/engagement.ts`,
+  `lib/actions/engagement.ts`) para que contactos y propiedades compartan la
+  misma lógica en vez de duplicarla.
+- `/properties`: buscador (título/ciudad/barrio) + filtro por operación y
+  estado.
+- `/properties/new` y `/properties/[id]/edit`: mismo formulario.
+- `/properties/[id]`: propietarios (agregar desde contactos existentes, con
+  % de tenencia y marca de "principal"; quitar), registro de actividad,
+  tareas, notas y timeline unificado — mismos patrones que la ficha de
+  contacto.
+
+Pendiente de esta fase, movido a después: tests automatizados (mismo
+criterio que Fase 1).
 
 ## Fase 3 — Captaciones
 

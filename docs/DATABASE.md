@@ -145,12 +145,9 @@ fila (p. ej. "solo quien creó la tarea puede completarla"). Tiene sentido
 mientras haya un solo asesor por organización; se ajusta cuando haya
 equipos reales que lo necesiten (ver docs/ARCHITECTURE.md).
 
-## Planificado (Fase 2 en adelante)
+## Implementado (Fase 2)
 
-Esquema propuesto para el resto del dominio. Se implementa incrementalmente,
-una migración por fase (ver docs/ROADMAP.md), no todo de una vez.
-
-### `properties` (Fase 2)
+### `properties`
 
 `id, organization_id, title, property_type text check in ('apartment',
 'house','ph','land','office','commercial','warehouse','other'),
@@ -161,12 +158,44 @@ total_area, covered_area, uncovered_area, lot_area, expenses numeric,
 age_years, description, internal_notes, status text check in ('draft',
 'valuation','capturing','active','reserved','sold','rented','paused','lost',
 'archived'), publication_url, external_reference, archived_at, created_at,
-updated_at, created_by`.
+updated_at, created_by`. `check (price is null or currency is not null)` —
+no se puede cargar precio sin moneda. Índices sobre `organization_id`,
+`status`, `operation_type`, `city`.
 
-### `property_owners` (Fase 2)
+El formulario de Fase 2 no expone todavía `floor`/`unit`/`latitude`/
+`longitude`/`uncovered_area`/`lot_area`/`age_years`/`internal_notes`/
+`publication_url`/`external_reference` — las columnas ya existen (para no
+tener que migrar de nuevo), la UI las suma cuando haga falta (captaciones,
+mapa, portales).
 
-`property_id fk, contact_id fk, ownership_percentage numeric, is_primary_contact
-boolean, notes` — PK compuesta `(property_id, contact_id)`.
+### `property_owners`
+
+`property_id fk, contact_id fk, ownership_percentage numeric check (0 <
+ownership_percentage <= 100), is_primary_contact boolean default false,
+notes, created_at` — PK compuesta `(property_id, contact_id)`. Mismo patrón
+que `contact_roles`: sin `organization_id` propio, RLS vía `EXISTS` contra
+`properties`.
+
+### `property_overview` (vista)
+
+Mismo patrón que `contact_overview`: `security_invoker` view que agrega
+`primary_owner_name` (el propietario marcado `is_primary_contact`, o el más
+antiguo si no hay ninguno marcado) para que el listado de propiedades no
+haga una consulta por fila.
+
+### `notes` / `tasks` / `activities`
+
+Se les agregó la columna nullable `property_id` (ALTER TABLE, sin tocar la
+migración de Fase 1) — el mismo registro de nota/tarea/actividad ahora puede
+colgar de un contacto o de una propiedad. La capa de datos/acciones se
+generalizó (`lib/data/engagement.ts`, `lib/actions/engagement.ts`) para no
+duplicar las cuatro operaciones (notas, tareas, completar tarea, actividad)
+entre `contacts` y `properties`.
+
+## Planificado (Fase 3 en adelante)
+
+Esquema propuesto para el resto del dominio. Se implementa incrementalmente,
+una migración por fase (ver docs/ROADMAP.md), no todo de una vez.
 
 ### `property_acquisitions` (Fase 3)
 
@@ -220,16 +249,19 @@ due_at`) si el uso real lo justifica — no especular de más.
 
 ## RLS a partir de la Fase 1
 
-Cada tabla nueva repite el mismo patrón que `organizations`:
+Cada tabla de negocio nueva repite el mismo patrón simple (ver "RLS de Fase
+1" arriba sobre por qué es `for all` sin restricción por fila todavía):
 
 ```sql
 alter table public.<tabla> enable row level security;
 
-create policy "Members can view <tabla> in their organization"
-  on public.<tabla> for select
+create policy "Members can manage <tabla> in their organization"
+  on public.<tabla> for all
   to authenticated
-  using (organization_id in (select private.user_org_ids()));
-
--- INSERT/UPDATE/DELETE con la misma condición en WITH CHECK,
--- ajustando por rol donde corresponda (p.ej. solo owner/admin puede archivar).
+  using (organization_id in (select private.user_org_ids()))
+  with check (organization_id in (select private.user_org_ids()));
 ```
+
+Para tablas junction sin `organization_id` propio (`contact_roles`,
+`property_owners`), la misma política pero con `EXISTS` contra la tabla
+padre en vez del `in (select private.user_org_ids())` directo.
