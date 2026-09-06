@@ -49,6 +49,8 @@ export type ContactRole =
 
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled";
+export type TaskCategory =
+  "follow_up_postventa" | "follow_up_anniversary" | "follow_up_birthday";
 
 export type ActivityType =
   | "call"
@@ -346,6 +348,7 @@ export interface Database {
           status: TaskStatus;
           assigned_to: string | null;
           completed_at: string | null;
+          category: TaskCategory | null;
           created_at: string;
           updated_at: string;
           created_by: string | null;
@@ -366,6 +369,7 @@ export interface Database {
           status?: TaskStatus;
           assigned_to?: string | null;
           completed_at?: string | null;
+          category?: TaskCategory | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;

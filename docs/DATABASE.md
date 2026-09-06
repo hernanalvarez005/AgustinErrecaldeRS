@@ -545,6 +545,47 @@ escritura — con el volumen de un solo asesor no hace falta cachearlo.
   `property_searches` directo, para traer el nombre del contacto sin una
   consulta aparte.
 
+## Fase 12 — implementado
+
+### `tasks.category` (columna nueva)
+
+`category text check (category is null or category in ('follow_up_postventa',
+'follow_up_anniversary', 'follow_up_birthday'))`, nullable, sin default.
+
+Es la única columna nueva de la fase. `contact_roles` no necesitó ningún
+cambio: `past_client`/`referrer` ya estaban en el check constraint desde
+la Fase 1 (nadie los asignaba automáticamente hasta ahora).
+
+Sirve para dos cosas: (1) que el cron (`lib/data/retention.ts`) pueda
+preguntar "¿ya existe una task de esta categoría para este deal/contacto
+[en este año]?" antes de insertar, sin depender de parsear el título —
+una columna estructurada es más confiable y no se rompe si el título
+cambia de redacción; (2) diferenciar en la UI, si hiciera falta más
+adelante, una task que generó el sistema de una que cargó el asesor a
+mano. Las tasks manuales quedan con `category = null`, como siempre.
+
+### Primer uso real de `SUPABASE_SERVICE_ROLE_KEY`
+
+Reservada sin usar desde la Fase 0 (`.env.example`). El cron de
+retención (`app/api/cron/retention-tasks`) no tiene ningún usuario
+logueado — lo dispara Vercel Cron por HTTP plano — así que la política
+RLS `organization_id in (select private.user_org_ids())`, que depende de
+`auth.uid()`, no le serviría de nada: necesita leer/escribir en todas las
+organizaciones. `lib/supabase/service-role.ts` crea un cliente con la
+service role key que bypassea RLS por completo — documentado ahí mismo
+para que nadie lo use por error en un request de un usuario real (para
+eso sigue estando `lib/supabase/server.ts`, que sí respeta RLS).
+
+### Por qué `tasks.assigned_to`/`created_by` quedan `null` en estas tasks
+
+El cron corre con la service role, sin ningún `auth.uid()` de por medio,
+así que esas dos columnas (que además nunca se leen en ningún lado del
+código — son "schema-ready pero sin UI", mismo patrón que
+`leads.assigned_to` desde la Fase 7) quedan en su default (`null`/
+`auth.uid()` evaluado como `null` fuera de una sesión). No afecta nada:
+como es un solo asesor por organización, ninguna pantalla filtra tasks
+por "asignadas a mí".
+
 ## Índices previstos (más allá de las PK/FK)
 
 `organization_id`, `contact_id`, `property_id`, `status`, `due_at`,

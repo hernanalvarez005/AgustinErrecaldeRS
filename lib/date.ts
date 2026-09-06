@@ -62,6 +62,15 @@ export function addDaysToYmd(ymd: string, days: number): string {
   return utcMidnightToYmd(d);
 }
 
+/**
+ * True if two "YYYY-MM-DD" strings share the same month and day, ignoring
+ * the year — used for yearly recurring dates (birthdays, deal
+ * anniversaries) where only the "MM-DD" part repeats (Fase 12).
+ */
+export function isSameMonthDay(a: string, b: string): boolean {
+  return a.slice(5) === b.slice(5);
+}
+
 /** 0 = Monday ... 6 = Sunday (the convention this calendar's grid uses). */
 export function getWeekdayIndexMondayFirst(ymd: string): number {
   const jsDay = ymdToUtcMidnight(ymd).getUTCDay(); // 0 = Sunday ... 6 = Saturday

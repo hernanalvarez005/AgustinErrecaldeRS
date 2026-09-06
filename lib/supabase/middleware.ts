@@ -1,10 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Paths that don't require an authenticated session. Everything else is
+// Paths that skip the session gate below — either because they're
+// genuinely public (login, auth callbacks) or because they authenticate
+// themselves independently and a Supabase session was never going to be
+// present (the retention-tasks cron checks its own CRON_SECRET bearer
+// token; see app/api/cron/retention-tasks/route.ts). Everything else is
 // treated as protected — new sections should default to "requires auth"
 // rather than remembering to add themselves here.
-const PUBLIC_PATH_PREFIXES = ["/login", "/auth"];
+const PUBLIC_PATH_PREFIXES = ["/login", "/auth", "/api/cron"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATH_PREFIXES.some(

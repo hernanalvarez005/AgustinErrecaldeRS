@@ -299,11 +299,47 @@ Pendiente de esta fase, movido a después: tests automatizados (mismo
 criterio que Fases 1-10); agregar columnas de amenities a `properties`
 (balcón/patio/ascensor) para poder puntuar esos tres requisitos.
 
-## Fase 12 — Fidelización
+## Fase 12 — Fidelización ✅
 
-- Estados relacionales (`past_client`, `follow_up`, `referrer`), tareas
-  automáticas de seguimiento postventa/aniversario/cumpleaños (sin envío
-  automático de mensajes).
+- Cron diario (`app/api/cron/retention-tasks`, programado en `vercel.json`
+  a las 09:00 UTC) que crea tres tipos de `task` de seguimiento — nunca
+  envía un mensaje, solo deja la tarea para que el asesor decida cómo y
+  cuándo contactar:
+  - **Postventa**: operaciones `closed` con `closing_date` de 30+ días
+    atrás → task "Seguimiento postventa" + rol `past_client` (ya existía
+    en `contact_roles` desde la Fase 1) asignado a comprador y vendedor si
+    todavía no lo tenían.
+  - **Aniversario**: operaciones `closed` cuyo `closing_date` cumple años
+    hoy → task "Aniversario de cierre (N años)", una vez por año.
+  - **Cumpleaños**: contactos activos cuyo `birth_date` cae hoy → task
+    "Cumpleaños", una vez por año.
+- Migración chica: `tasks.category` (nullable) para distinguir estas tasks
+  automáticas de las manuales y evitar duplicados en cada corrida —
+  `contact_roles` no necesitó ningún cambio (`past_client`/`referrer` ya
+  estaban desde la Fase 1).
+- Nuevo `lib/supabase/service-role.ts`: primer uso real de
+  `SUPABASE_SERVICE_ROLE_KEY` (reservada sin usar desde la Fase 0) — el
+  cron no tiene un usuario logueado, así que necesita bypassear RLS para
+  leer/escribir en todas las organizaciones.
+- **Bug real encontrado y corregido** (código de esta misma fase, no de
+  una fase anterior): el middleware (`proxy.ts` → `lib/supabase/
+middleware.ts`) redirigía cualquier request sin sesión a `/login`,
+  incluyendo `/api/cron/*` — el cron nunca podía llegar a autenticarse con
+  su propio `CRON_SECRET` porque el middleware lo bloqueaba antes. Se
+  agregó `/api/cron` a los prefijos que se saltan el gate de sesión (con
+  el comentario explicando que no es "público", tiene su propia
+  autenticación).
+- Verificado end-to-end contra Supabase real: los tres tipos de task se
+  crean con los datos y vínculos correctos (deal_id/contact_id), aparecen
+  en `/today`, en la ficha del contacto y en la ficha de la operación;
+  `past_client` se asigna correctamente; una segunda corrida del cron el
+  mismo día no duplica nada (0 tasks nuevas); un request sin el bearer
+  correcto devuelve 401.
+
+Pendiente de esta fase, movido a después: tests automatizados (mismo
+criterio que Fases 1-11); un asesor real que reciba un WhatsApp
+automático en vez de solo una task queda fuera de alcance (ver
+"Explícitamente fuera de estas fases").
 
 ## Explícitamente fuera de estas fases
 

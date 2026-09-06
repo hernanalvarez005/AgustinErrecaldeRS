@@ -401,3 +401,21 @@ poder leer o usar. Si el día de mañana un equipo comparte una
 organización, cada asesor sigue necesitando conectar su propia cuenta de
 Google — no hay "una" conexión de la organización para reutilizar entre
 varios usuarios.
+
+## Gotcha real encontrado: el middleware bloqueaba su propio endpoint de cron
+
+`lib/supabase/middleware.ts` redirige a `/login` cualquier request sin
+sesión de Supabase que no esté en una lista corta de rutas públicas. El
+Route Handler del cron de retención (`app/api/cron/retention-tasks`,
+Fase 12) tiene su propia autenticación — un header `Authorization: Bearer
+<CRON_SECRET>` que Vercel Cron envía solo — pero como nunca hay una
+sesión de Supabase detrás de ese request, el middleware lo interceptaba
+antes de que el Route Handler llegara siquiera a mirar el header, y
+redirigía a `/login` con un 307. El fix fue agregar `/api/cron` a
+`PUBLIC_PATH_PREFIXES` — no porque el endpoint sea público (exige su
+propio secreto), sino porque el gate de sesión del middleware no aplica
+ahí: ese endpoint nunca va a tener una sesión de Supabase, tiene la suya
+propia. Cualquier Route Handler futuro que se autentique con su propio
+mecanismo (un webhook con firma, otro cron) va a necesitar el mismo
+tratamiento — el comentario junto a la constante aclara esto para que no
+se lea como "sin autenticación".
