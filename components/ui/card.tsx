@@ -37,7 +37,11 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+        // V2.1: unified section-heading style (docs/DESIGN_SYSTEM.md) — the
+        // codebase's actual usage had already converged on this everywhere
+        // except the component default, forcing every call site to repeat
+        // `className="text-sm"`. Kept overridable via `className`.
+        "font-heading text-sm leading-snug font-semibold",
         className,
       )}
       {...props}

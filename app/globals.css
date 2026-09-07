@@ -39,6 +39,15 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-border-strong: var(--border-strong);
+  --color-success-foreground: var(--success-foreground);
+  --color-success: var(--success);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning: var(--warning);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-danger: var(--danger);
+  --color-neutral-foreground: var(--neutral-foreground);
+  --color-neutral: var(--neutral);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,13 +58,21 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
+  /* Canvas (page background) intentionally a hair off-white so cards —
+     which stay pure white via --card — read as a distinct surface. See
+     docs/DESIGN_SYSTEM.md and V2.1 UI audit, point 9 of the spec. */
+  --background: oklch(0.982 0.003 264.542);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  /* Single brand primary (#2563EB) — the app had no established brand
+     color before V2.1 (see docs/V2_1_UI_AUDIT.md); adopted per spec point
+     12. Hover/pressed states reuse this via opacity modifiers
+     (hover:bg-primary/80, etc.) rather than a separate hover token, to
+     match the pattern already used by every other color in this file. */
+  --primary: oklch(0.546 0.215 262.881);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -65,22 +82,39 @@
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
+  --border-strong: oklch(0.872 0.009 258.338);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: var(--primary);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
+
+  /* Semantic status tones (V2.1) — resolved per status by
+     lib/status-tone.ts and consumed via components/shared/status-badge.tsx.
+     Solid values used as text/border, `/10`–`/20` opacity as background
+     wash — same idiom already used by --destructive across the app. */
+  --success: oklch(0.627 0.17 149.214);
+  --success-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.666 0.157 58.318);
+  --warning-foreground: oklch(0.985 0 0);
+  --danger: var(--destructive);
+  --danger-foreground: oklch(0.985 0 0);
+  --neutral: var(--muted-foreground);
+  --neutral-foreground: var(--foreground);
+
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  /* Active/hover nav item: subtle primary wash + primary text, per spec
+     point 22 (no saturated bars, no per-item colors). */
+  --sidebar-accent: color-mix(in oklch, var(--primary) 10%, white);
+  --sidebar-accent-foreground: var(--primary);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: var(--primary);
 }
 
 .dark {
@@ -90,8 +124,10 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  /* Slightly brighter than the light-mode primary for contrast against a
+     dark canvas — same hue, same brand. */
+  --primary: oklch(0.623 0.188 262.881);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -100,21 +136,32 @@
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
+  --border-strong: oklch(1 0 0 / 18%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: var(--primary);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+
+  --success: oklch(0.72 0.17 149.214);
+  --success-foreground: oklch(0.145 0 0);
+  --warning: oklch(0.75 0.157 58.318);
+  --warning-foreground: oklch(0.145 0 0);
+  --danger: var(--destructive);
+  --danger-foreground: oklch(0.145 0 0);
+  --neutral: var(--muted-foreground);
+  --neutral-foreground: var(--foreground);
+
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-accent: color-mix(in oklch, var(--primary) 20%, var(--sidebar));
+  --sidebar-accent-foreground: var(--primary);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: var(--primary);
 }
 
 @layer base {

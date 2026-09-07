@@ -87,7 +87,7 @@ export default async function SettingsPage({
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           {connectedNotice ? (
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-700 dark:text-emerald-400">
+            <div className="border-success/30 bg-success/10 text-success rounded-md border px-3 py-2">
               Conectado correctamente.
             </div>
           ) : null}
