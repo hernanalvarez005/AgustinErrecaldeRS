@@ -698,6 +698,29 @@ Sin `unique (property_id, search_id)`: volver a presentar la misma
 propiedad más adelante (por ejemplo tras una baja de precio) es una
 acción real, no un error a impedir.
 
+## V2 bloque H — sin migración
+
+Último bloque del plan V2 (docs/V2_EVOLUTION_PLAN.md) — solo lecturas
+nuevas sobre tablas ya existentes, mismo criterio que la Fase 10:
+
+- "Tasaciones": `valuations.valuation_date` (nativo `date`) filtrado
+  directo por el rango del período — misma lógica que `closing_date` en
+  "Cierres".
+- "Reservas": `deals.reservation_date` filtrado por rango, pero además
+  gateado a `status in ('reservation','documentation','contract',
+'closing','closed')` — igual que "Cierres" gatea en `status =
+'closed'`: `reservation_date` es un campo editable del formulario de la
+  operación, así que una fecha cargada no prueba por sí sola que la
+  operación efectivamente llegó a ese hito.
+- "Leads respondidos": cohorte por `created_at` (mismo criterio que los
+  embudos) con `status <> 'new'` como condición — no existe una columna
+  de "primera respuesta" en el esquema, así que esta es la señal más
+  honesta disponible, documentada como tal en el código
+  (`lib/data/dashboard.ts`).
+- "Propiedades captadas" no agregó ninguna consulta: reutiliza el bucket
+  `won` que `getAcquisitionFunnel` (Fase 10) ya calculaba para ese mismo
+  período.
+
 ## Índices previstos (más allá de las PK/FK)
 
 `organization_id`, `contact_id`, `property_id`, `status`, `due_at`,

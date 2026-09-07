@@ -454,3 +454,32 @@ cualquier cálculo futuro que necesite el instante actual desde un
 Server/Client Component: envolverlo en una función de `lib/`, nunca
 escribir `Date.now()`/`new Date()` (sin argumento) directo en el cuerpo
 del componente.
+
+## Gotcha real encontrado (mobile): `flex-1` nunca wrappea, se comprime
+
+Encontrado auditando `/contacts/[id]` (y las 5 fichas gemelas —
+propiedad, captación, búsqueda, operación, lead) en viewport de 375px
+(V2 bloque H): el input de descripción de "Registrar actividad" y el de
+título en "Tareas" mostraban su placeholder truncado ("Detall..." en vez
+de "Detalle (opcional)") en vez de saltar a su propia línea dentro del
+`<form className="flex flex-wrap items-end gap-2">` que los contiene.
+
+Causa raíz: la clase `flex-1` de Tailwind es `flex: 1 1 0%` — el `0%` es
+el `flex-basis`. Un ítem con `flex-basis: 0` siempre "entra" en el
+cálculo de wrap del navegador (su tamaño hipotético de partida es cero),
+así que `flex-wrap` nunca lo manda a una línea nueva por más que el
+espacio real disponible sea insuficiente para su contenido — en cambio,
+el navegador lo comprime hasta donde pueda. `max-w-xs` (que sí tenía el
+input) limita el máximo, no evita este problema: el mínimo seguía siendo 0.
+
+Fix: agregar `min-w-40` junto a `flex-1` (13 instancias de esta clase en
+6 archivos). Con un mínimo explícito, el navegador ya no puede comprimir
+el input por debajo de eso — si no entra en el espacio restante de la
+línea, ahí sí `flex-wrap` lo manda a la línea siguiente.
+
+Regla general para cualquier `flex-1` futuro dentro de un contenedor con
+`flex-wrap` en un layout que también debe verse bien en mobile: si el
+ítem tiene contenido que no puede comprimirse arbitrariamente (un
+placeholder de texto, un ícono con label), siempre necesita un
+`min-w-*` explícito — `flex-1` solo, por sí mismo, no es "se adapta", es
+"se estira o se aplasta hasta cero".

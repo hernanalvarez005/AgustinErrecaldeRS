@@ -474,7 +474,58 @@ no lo hay).
 
 ---
 
-## Bloque H — Refinamiento (leads, operaciones, dashboard, mobile)
+## Bloque H — Refinamiento (leads, operaciones, dashboard, mobile) ✅ implementado
+
+Último bloque del plan V2 — implementado tal como se planeó, sin
+migración, con un bug real encontrado y corregido en el camino.
+
+- **Leads**: columna "Ingresó" pasó de fecha absoluta a tiempo relativo
+  (`formatRelativeTime`, ya existía desde Bloque A) — "hace 12 min" en
+  vez de "06-sept", igual que pide el spec para un inbox donde la
+  antigüedad es la señal que importa.
+- **Operaciones**: el header de `/deals/[id]` ahora distingue "Próximo
+  hito" (una `activity` agendada — reunión, escribanía) de "Próxima
+  acción" (una `task`) — antes solo existía el segundo concepto; una
+  operación con una reunión en el calendario pero sin task asociada
+  mostraba "sin próxima acción" aunque en rigor sí tenía algo agendado.
+  Ambos se calculan de los mismos `tasks`/`activities` que la página ya
+  traía, sin queries nuevas.
+- **Dashboard**: 3 KPIs nuevos — "Leads respondidos" (cohorte por
+  `created_at`, estado actual ≠ `new`, mismo criterio que los embudos),
+  "Tasaciones" (`valuations.valuation_date`, fecha real) y "Reservas"
+  (`deals.reservation_date`, gateado a estado `reservation` o posterior
+  por la misma razón que "Cierres" gatea en `status = 'closed'` — una
+  fecha cargada en el formulario no prueba por sí sola que el hito
+  ocurrió). "Propiedades captadas" no sumó una query nueva: reutiliza el
+  bucket `won` que el embudo de captaciones ya calculaba.
+- **Google Calendar con nuevos tipos**: no hizo falta ningún cambio — ya
+  sincroniza cualquier `ActivityType` sin distinción desde la Fase 9;
+  verificado de nuevo en la práctica durante el Bloque D (visitas) sin
+  tocar `lib/google/*`.
+- **Mobile**: auditado en viewport de 375px — Hoy, ficha de propiedad
+  (con tabs) y dashboard ya se comportaban bien (sin scroll horizontal,
+  una sola columna). **Bug real encontrado y corregido:** el input
+  "Detalle (opcional)"/"Nueva tarea" de los formularios de "Registrar
+  actividad" y "Tareas" (idéntico en 6 fichas — contacto, propiedad,
+  captación, búsqueda, operación, lead) usaba `flex-1` sin un
+  `min-width`, así que en vez de saltar a su propia línea se achicaba
+  hasta truncar el placeholder ("Detall..."). Causa raíz: `flex-1` fija
+  `flex-basis: 0%`, y un flex-item con base 0 nunca necesita wrappear —
+  el navegador prefiere comprimirlo. Fix: `min-w-40` además de `flex-1`
+  en las 13 instancias de esa clase, en los 6 archivos — ahora el campo
+  se lee completo o salta de línea, nunca se trunca.
+- Verificado end-to-end contra Supabase real: los 3 KPIs nuevos con
+  datos exactos (lead respondido vs. nuevo, tasación, reserva — cada uno
+  contado correctamente); "Próximo hito"/"Próxima acción" mostrando una
+  activity agendada y una task pendientes por separado en el mismo deal;
+  captura mobile antes/después confirmando el fix del input. Sin errores
+  de consola ni de servidor.
+
+Con este bloque se completan las 8 secciones del plan V2
+(docs/V2_EVOLUTION_PLAN.md, Bloques A-H) sobre la base de las 12 fases
+de la V1 (docs/ROADMAP.md).
+
+Detalle original del plan:
 
 | Mejora                                                                                      | Estado actual                                                                                                                                  | Reutilizar                       | Modificar                                                                                                                                                                       | Nuevo | Riesgo                              |
 | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ----------------------------------- |

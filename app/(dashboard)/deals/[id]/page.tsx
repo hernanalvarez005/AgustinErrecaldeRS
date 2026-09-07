@@ -24,7 +24,7 @@ import {
 import { getDeal } from "@/lib/data/deals";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { getProperty } from "@/lib/data/properties";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import {
   ACTIVITY_TYPE_LABELS,
   LOGGABLE_ACTIVITY_TYPES,
@@ -80,6 +80,25 @@ export default async function DealDetailPage({
     deal.currency,
   );
 
+  // "Próximo hito" (a scheduled event — a meeting, a signing) vs. "próxima
+  // acción" (a task) are different things (V2 bloque H, spec §65): a deal
+  // can have an appointment on the calendar with nobody owning a follow-up
+  // task yet, or vice versa. Showing only one used to hide whichever the
+  // advisor didn't check for.
+  const nextMilestone = activities
+    .filter((a) => a.status === "scheduled")
+    .sort(
+      (a, b) =>
+        new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+    )[0];
+  const nextAction = pendingTasks
+    .filter((t) => t.due_at)
+    .sort(
+      (a, b) =>
+        new Date(a.due_at as string).getTime() -
+        new Date(b.due_at as string).getTime(),
+    )[0];
+
   return (
     <div className="max-w-3xl space-y-6">
       <div className="space-y-2">
@@ -114,6 +133,18 @@ export default async function DealDetailPage({
         {price ? (
           <p className="text-muted-foreground text-sm">{price}</p>
         ) : null}
+        <p className="text-muted-foreground text-sm">
+          Próximo hito:{" "}
+          {nextMilestone
+            ? `${ACTIVITY_TYPE_LABELS[nextMilestone.type]} · ${formatDateTime(nextMilestone.starts_at)}`
+            : "Sin hito agendado"}
+        </p>
+        <p className="text-muted-foreground text-sm">
+          Próxima acción:{" "}
+          {nextAction
+            ? `${nextAction.title} · ${formatDate(nextAction.due_at)}`
+            : "Sin próxima acción"}
+        </p>
         {property ? (
           <Link
             href={`/properties/${property.id}`}
@@ -329,7 +360,7 @@ export default async function DealDetailPage({
             <Input
               name="description"
               placeholder="Detalle (opcional)"
-              className="max-w-xs flex-1"
+              className="min-w-40 flex-1"
             />
             <Button type="submit" variant="outline">
               Registrar
@@ -384,7 +415,7 @@ export default async function DealDetailPage({
             <Input
               name="title"
               placeholder="Nueva tarea"
-              className="max-w-xs flex-1"
+              className="min-w-40 flex-1"
               required
             />
             <Select

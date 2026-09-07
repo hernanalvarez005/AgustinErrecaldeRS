@@ -8,7 +8,9 @@ import {
   getClosingsKpi,
   getDealFunnel,
   getLeadsKpi,
+  getReservationsKpi,
   getSearchFunnel,
+  getValuationsKpi,
   getVisitsKpi,
 } from "@/lib/data/dashboard";
 import { DASHBOARD_PERIOD_LABELS, type DashboardPeriod } from "@/lib/date";
@@ -47,15 +49,31 @@ export default async function DashboardKpiPage({
   const membership = await requireMembership();
   const organizationId = membership.organization.id;
 
-  const [leads, visits, closings, acquisitionFunnel, searchFunnel, dealFunnel] =
-    await Promise.all([
-      getLeadsKpi(organizationId, period),
-      getVisitsKpi(organizationId, period),
-      getClosingsKpi(organizationId, period),
-      getAcquisitionFunnel(organizationId, period),
-      getSearchFunnel(organizationId, period),
-      getDealFunnel(organizationId, period),
-    ]);
+  const [
+    leads,
+    visits,
+    valuations,
+    reservations,
+    closings,
+    acquisitionFunnel,
+    searchFunnel,
+    dealFunnel,
+  ] = await Promise.all([
+    getLeadsKpi(organizationId, period),
+    getVisitsKpi(organizationId, period),
+    getValuationsKpi(organizationId, period),
+    getReservationsKpi(organizationId, period),
+    getClosingsKpi(organizationId, period),
+    getAcquisitionFunnel(organizationId, period),
+    getSearchFunnel(organizationId, period),
+    getDealFunnel(organizationId, period),
+  ]);
+
+  // The acquisition funnel already buckets this period's cohort by current
+  // status (lib/data/dashboard.ts) — "propiedades captadas" reuses that
+  // "won" bucket instead of a second, redundant query.
+  const acquisitionsWon =
+    acquisitionFunnel.find((stage) => stage.status === "won")?.count ?? 0;
 
   return (
     <div className="space-y-6">
@@ -92,6 +110,16 @@ export default async function DashboardKpiPage({
         <Card>
           <CardHeader>
             <CardTitle className="text-muted-foreground text-sm font-medium">
+              Leads respondidos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            {leads.responded}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-muted-foreground text-sm font-medium">
               Leads convertidos
             </CardTitle>
           </CardHeader>
@@ -106,6 +134,36 @@ export default async function DashboardKpiPage({
             </CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">{visits}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-muted-foreground text-sm font-medium">
+              Tasaciones
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            {valuations}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-muted-foreground text-sm font-medium">
+              Propiedades captadas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            {acquisitionsWon}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-muted-foreground text-sm font-medium">
+              Reservas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            {reservations}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader>

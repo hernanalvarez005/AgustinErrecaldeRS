@@ -536,7 +536,7 @@ export default async function PropertyDetailPage({
                 <Input
                   name="conditions"
                   placeholder="Condiciones (opcional)"
-                  className="max-w-xs flex-1"
+                  className="min-w-40 flex-1"
                 />
                 <Textarea
                   name="notes"
@@ -595,7 +595,7 @@ export default async function PropertyDetailPage({
                 <Input
                   name="description"
                   placeholder="Detalle (opcional)"
-                  className="max-w-xs flex-1"
+                  className="min-w-40 flex-1"
                 />
                 <Button type="submit" variant="outline">
                   Registrar
@@ -650,7 +650,7 @@ export default async function PropertyDetailPage({
                 <Input
                   name="title"
                   placeholder="Nueva tarea"
-                  className="max-w-xs flex-1"
+                  className="min-w-40 flex-1"
                   required
                 />
                 <Select

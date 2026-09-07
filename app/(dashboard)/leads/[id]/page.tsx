@@ -230,7 +230,7 @@ export default async function LeadDetailPage({
             <Input
               name="description"
               placeholder="Detalle (opcional)"
-              className="max-w-xs flex-1"
+              className="min-w-40 flex-1"
             />
             <Button type="submit" variant="outline">
               Registrar
@@ -285,7 +285,7 @@ export default async function LeadDetailPage({
             <Input
               name="title"
               placeholder="Nueva tarea"
-              className="max-w-xs flex-1"
+              className="min-w-40 flex-1"
               required
             />
             <Select

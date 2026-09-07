@@ -45,9 +45,21 @@ function bucketByStatus<S extends string>(
   }));
 }
 
-export type LeadsKpi = { newLeads: number; converted: number };
+export type LeadsKpi = {
+  newLeads: number;
+  responded: number;
+  converted: number;
+};
 
-/** New leads created in the period, and how many of them (or earlier ones) converted within it — see docs/DATABASE.md on why these use different timestamp columns. */
+/**
+ * New leads created in the period, how many of them (or earlier ones)
+ * converted within it, and how many of the period's leads have moved past
+ * `new` — see docs/DATABASE.md on why these use different filtering
+ * strategies. "Respondidos" is a cohort snapshot like the funnels below
+ * (no dedicated "first response" timestamp exists in the schema): leads
+ * created in the period whose CURRENT status isn't `new` anymore — the
+ * most honest signal buildable with what's tracked today.
+ */
 export async function getLeadsKpi(
   organizationId: string,
   period: DashboardPeriod,
@@ -66,6 +78,14 @@ export async function getLeadsKpi(
     .lt("created_at", endUtc);
   if (startYmd) newLeadsQuery = newLeadsQuery.gte("created_at", startUtc);
 
+  let respondedQuery = supabase
+    .from("leads")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .neq("status", "new")
+    .lt("created_at", endUtc);
+  if (startYmd) respondedQuery = respondedQuery.gte("created_at", startUtc);
+
   let convertedQuery = supabase
     .from("leads")
     .select("id", { count: "exact", head: true })
@@ -74,13 +94,19 @@ export async function getLeadsKpi(
     .lt("converted_at", endUtc);
   if (startYmd) convertedQuery = convertedQuery.gte("converted_at", startUtc);
 
-  const [newLeadsRes, convertedRes] = await Promise.all([
+  const [newLeadsRes, respondedRes, convertedRes] = await Promise.all([
     newLeadsQuery,
+    respondedQuery,
     convertedQuery,
   ]);
 
   if (newLeadsRes.error)
     console.error("Failed to count new leads:", newLeadsRes.error.message);
+  if (respondedRes.error)
+    console.error(
+      "Failed to count responded leads:",
+      respondedRes.error.message,
+    );
   if (convertedRes.error)
     console.error(
       "Failed to count converted leads:",
@@ -89,6 +115,7 @@ export async function getLeadsKpi(
 
   return {
     newLeads: newLeadsRes.count ?? 0,
+    responded: respondedRes.count ?? 0,
     converted: convertedRes.count ?? 0,
   };
 }
@@ -115,6 +142,63 @@ export async function getVisitsKpi(
 
   const { count, error } = await query;
   if (error) console.error("Failed to count visits:", error.message);
+  return count ?? 0;
+}
+
+/** Valuations recorded within the period, by their own valuation_date (a native `date`) — "Tasaciones" (V2 bloque H). */
+export async function getValuationsKpi(
+  organizationId: string,
+  period: DashboardPeriod,
+): Promise<number> {
+  const { startYmd, endYmdExclusive } = getPeriodYmdRange(period);
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("valuations")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .lt("valuation_date", endYmdExclusive);
+  if (startYmd) query = query.gte("valuation_date", startYmd);
+
+  const { count, error } = await query;
+  if (error) console.error("Failed to count valuations:", error.message);
+  return count ?? 0;
+}
+
+/**
+ * Deals that reached the reservation milestone within the period, by
+ * `reservation_date` (a native `date`) — "Reservas" (V2 bloque H). Gated
+ * to `status` at or past `reservation` for the same reason
+ * `getClosingsKpi` gates on `status = 'closed'`: `reservation_date` is an
+ * editable field on the deal form, so a date alone doesn't prove the
+ * milestone was actually reached yet.
+ */
+const RESERVED_OR_LATER_DEAL_STATUSES = [
+  "reservation",
+  "documentation",
+  "contract",
+  "closing",
+  "closed",
+] as const;
+
+export async function getReservationsKpi(
+  organizationId: string,
+  period: DashboardPeriod,
+): Promise<number> {
+  const { startYmd, endYmdExclusive } = getPeriodYmdRange(period);
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("deals")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+    .in("status", RESERVED_OR_LATER_DEAL_STATUSES)
+    .not("reservation_date", "is", null)
+    .lt("reservation_date", endYmdExclusive);
+  if (startYmd) query = query.gte("reservation_date", startYmd);
+
+  const { count, error } = await query;
+  if (error) console.error("Failed to count reservations:", error.message);
   return count ?? 0;
 }
 

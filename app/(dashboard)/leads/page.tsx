@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { requireMembership } from "@/lib/auth/session";
 import { listLeads } from "@/lib/data/leads";
-import { formatDate, formatEventDay } from "@/lib/format";
+import { formatDate, formatRelativeTime } from "@/lib/format";
 import {
   CONTACT_SOURCE_LABELS,
   CONTACT_SOURCES,
@@ -168,7 +168,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {formatEventDay(lead.created_at)}
+                    {formatRelativeTime(lead.created_at)}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {formatDate(lead.next_action_at) ?? "—"}
