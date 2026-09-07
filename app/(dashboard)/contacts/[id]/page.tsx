@@ -90,6 +90,8 @@ export default async function ContactDetailPage({
 
   if (!contact) notFound();
 
+  const whatsappHref = toWhatsAppLink(contact.whatsapp || contact.phone || "");
+
   const pendingTasks = tasks.filter(
     (t) => t.status === "pending" || t.status === "in_progress",
   );
@@ -153,6 +155,27 @@ export default async function ContactDetailPage({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {whatsappHref ? (
+            <Button
+              render={
+                <a href={whatsappHref} target="_blank" rel="noreferrer" />
+              }
+              nativeButton={false}
+              variant="outline"
+              size="sm"
+            >
+              <MessageCircle /> WhatsApp
+            </Button>
+          ) : (
+            <Button
+              disabled
+              variant="outline"
+              size="sm"
+              title="Este contacto no tiene un número registrado."
+            >
+              <MessageCircle /> WhatsApp
+            </Button>
+          )}
           {contact.phone ? (
             <Button
               render={<a href={`tel:${contact.phone}`} />}
@@ -161,22 +184,6 @@ export default async function ContactDetailPage({
               size="sm"
             >
               <Phone /> Llamar
-            </Button>
-          ) : null}
-          {contact.whatsapp || contact.phone ? (
-            <Button
-              render={
-                <a
-                  href={toWhatsAppLink(contact.whatsapp || contact.phone || "")}
-                  target="_blank"
-                  rel="noreferrer"
-                />
-              }
-              nativeButton={false}
-              variant="outline"
-              size="sm"
-            >
-              <MessageCircle /> WhatsApp
             </Button>
           ) : null}
           {contact.email ? (
