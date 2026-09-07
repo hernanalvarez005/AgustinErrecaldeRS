@@ -10,7 +10,7 @@ export async function getGoogleCalendarConnection() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("google_calendar_connections")
-    .select("google_email, calendar_id, created_at")
+    .select("google_email, calendar_id, created_at, last_synced_at")
     .eq("user_id", user.id)
     .maybeSingle();
 

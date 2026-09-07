@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { updateEventStatus } from "@/app/(dashboard)/calendar/actions";
@@ -53,14 +53,28 @@ function EventRow({ event }: { event: CalendarEvent }) {
           {eventTime(event.starts_at)}
         </span>
         <div className="min-w-0 flex-1">
-          <Link
-            href={`/calendar/${event.id}/edit`}
-            className="font-medium hover:underline"
-          >
-            {ACTIVITY_TYPE_LABELS[event.type]}
-          </Link>
+          {event.source === "google_calendar" ? (
+            // Read-only until Bloque 8's "Vincular"/"Convertir en actividad
+            // CRM" — editing an imported event through the CRM's own form
+            // isn't a decision to make silently just by clicking its title.
+            <span className="font-medium">
+              {event.title || ACTIVITY_TYPE_LABELS[event.type]}
+            </span>
+          ) : (
+            <Link
+              href={`/calendar/${event.id}/edit`}
+              className="font-medium hover:underline"
+            >
+              {event.title || ACTIVITY_TYPE_LABELS[event.type]}
+            </Link>
+          )}
           {event.link ? (
             <span className="text-muted-foreground"> · {event.link.label}</span>
+          ) : null}
+          {event.source === "google_calendar" ? (
+            <Badge variant="outline" className="ml-2">
+              <CalendarDays /> Google Calendar
+            </Badge>
           ) : null}
           {event.status !== "scheduled" ? (
             <StatusBadge
@@ -78,7 +92,7 @@ function EventRow({ event }: { event: CalendarEvent }) {
           ) : null}
         </div>
       </div>
-      {event.status === "scheduled" ? (
+      {event.status === "scheduled" && event.source !== "google_calendar" ? (
         <div className="flex shrink-0 gap-1">
           {event.type === "property_visit" ||
           event.type === "acquisition_visit" ? (

@@ -232,10 +232,15 @@ export async function updateEventStatus(eventId: string, status: string) {
   if (status === "cancelled") {
     const { data: existing } = await supabase
       .from("activities")
-      .select("google_event_id")
+      .select("google_event_id, source")
       .eq("id", eventId)
       .single();
-    if (existing?.google_event_id) {
+    // Only delete the Google-side event for a row this CRM created and
+    // pushed there itself. A `google_calendar`-sourced row's google_event_id
+    // points at the advisor's own real, external Google event — the CRM
+    // must never delete that just because someone clicked "Cancelar" here
+    // (defense in depth: the UI already hides this action for those rows).
+    if (existing?.google_event_id && existing.source === "crm") {
       await deleteGoogleCalendarEvent(existing.google_event_id);
     }
   }

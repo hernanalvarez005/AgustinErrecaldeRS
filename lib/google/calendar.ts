@@ -14,7 +14,7 @@ const TOKEN_REFRESH_SAFETY_MARGIN_MS = 60_000; // refresh a minute before it act
  * treats that as "nothing to sync," never as an error, since Google
  * Calendar sync is optional (docs/PRODUCT_SPEC.md).
  */
-async function getValidConnection(): Promise<{
+export async function getValidConnection(): Promise<{
   accessToken: string;
   calendarId: string;
 } | null> {
@@ -171,6 +171,126 @@ export async function updateGoogleCalendarEvent(
       error instanceof Error ? error.message : error,
     );
     return false;
+  }
+}
+
+// --- Google → CRM incremental sync (V2.2 Bloque 6) -------------------------
+//
+// Everything below reads FROM Google; the functions above (create/update/
+// delete) remain the only ones that write TO Google. Kept in this file
+// rather than a separate module since they share `getValidConnection` and
+// `callCalendarApi` and the whole point is "one place that talks to the
+// Calendar API".
+
+/** The subset of Google's Events resource this app actually reads. */
+export type GoogleCalendarEventPayload = {
+  id: string;
+  status: "confirmed" | "tentative" | "cancelled";
+  summary?: string;
+  description?: string;
+  location?: string;
+  start?: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
+  updated?: string;
+};
+
+export type ListChangedEventsResult =
+  | { ok: true; events: GoogleCalendarEventPayload[]; nextSyncToken: string }
+  | { ok: false; reason: "no_connection" }
+  | { ok: false; reason: "sync_token_invalid" }
+  | { ok: false; reason: "error"; message: string };
+
+// How far back a first-ever ("full") sync looks — a real estate advisor's
+// agenda doesn't need years of history, and an unbounded pull risks
+// dragging in a huge personal event backlog on first connect. Once this
+// initial windowed sync hands back a nextSyncToken, every later call is
+// incremental (no timeMin) and simply follows changes forward from there —
+// Google ties a sync token to the filters used to obtain it, so this bound
+// only ever applies once.
+const FULL_SYNC_LOOKBACK_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
+
+/**
+ * Pulls every event that changed since `syncToken` (or, when null, does a
+ * bounded first-time sync — see FULL_SYNC_LOOKBACK_MS), paging through all
+ * results, and returns the token to persist for the next call.
+ *
+ * `singleEvents` and `showDeleted` are passed on every call, sync or not:
+ * Google ties a sync token to the parameter set that produced it, so
+ * these must stay identical between the initial and every incremental
+ * request — singleEvents expands recurring events into individual
+ * instances (this app has no concept of a recurrence rule to store
+ * otherwise), showDeleted is what makes a Google-side deletion show up at
+ * all during an incremental sync.
+ */
+export async function listChangedGoogleCalendarEvents(
+  syncToken: string | null,
+): Promise<ListChangedEventsResult> {
+  const connection = await getValidConnection();
+  if (!connection) return { ok: false, reason: "no_connection" };
+
+  const events: GoogleCalendarEventPayload[] = [];
+  let pageToken: string | undefined;
+  let nextSyncToken: string | undefined;
+
+  try {
+    do {
+      const params = new URLSearchParams({
+        singleEvents: "true",
+        showDeleted: "true",
+        maxResults: "250",
+      });
+      if (syncToken) {
+        params.set("syncToken", syncToken);
+      } else {
+        params.set(
+          "timeMin",
+          new Date(Date.now() - FULL_SYNC_LOOKBACK_MS).toISOString(),
+        );
+      }
+      if (pageToken) params.set("pageToken", pageToken);
+
+      const response = await callCalendarApi(
+        "GET",
+        `/calendars/${encodeURIComponent(connection.calendarId)}/events?${params.toString()}`,
+        connection.accessToken,
+      );
+
+      if (response.status === 410) {
+        // Google's documented signal for "this sync token is too old / no
+        // longer valid" — the caller must clear it and do a fresh full sync.
+        return { ok: false, reason: "sync_token_invalid" };
+      }
+      if (!response.ok) {
+        return {
+          ok: false,
+          reason: "error",
+          message: `Google Calendar respondió ${response.status}.`,
+        };
+      }
+
+      const data = await response.json();
+      if (Array.isArray(data.items)) events.push(...data.items);
+      pageToken = data.nextPageToken;
+      nextSyncToken = data.nextSyncToken;
+    } while (pageToken);
+
+    if (!nextSyncToken) {
+      // Shouldn't happen (Google always includes it on the last page), but
+      // without one we can't do an incremental sync next time.
+      return {
+        ok: false,
+        reason: "error",
+        message: "Google Calendar no devolvió un token de sincronización.",
+      };
+    }
+
+    return { ok: true, events, nextSyncToken };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: "error",
+      message: error instanceof Error ? error.message : "Error desconocido.",
+    };
   }
 }
 

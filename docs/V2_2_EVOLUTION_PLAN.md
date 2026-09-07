@@ -129,4 +129,32 @@ push → reporte → confirmación para el siguiente Bloque.
   no coincidente y de tamaño >15MB en el cliente.
 - **Bloque 5 (Auditoría Calendar)** — ✅ completo, ver secciones 5.x
   arriba.
-- **Bloques 6-9** — pendientes.
+- **Bloque 6 (Google → CRM incremental sync)** — ✅ completo.
+  `sync_token`/`last_synced_at` en `google_calendar_connections`,
+  `source`/`google_updated_at` en `activities` (reutilizando las FKs de
+  vinculación ya existentes — nada nuevo para "vincular", queda listo para
+  el Bloque 8). `lib/google/calendar.ts` (`listChangedGoogleCalendarEvents`:
+  paginación, `syncToken`/full-sync con ventana de 90 días, detección de
+  token inválido) y `lib/google/calendar-sync.ts` (aplica los cambios:
+  evento nuevo → fila externa sin ninguna vinculación CRM; evento
+  actualizado → refresca título/horario con guard anti-reproceso por
+  `google_updated_at`; evento cancelado → fila puramente externa se borra,
+  fila vinculada al CRM se marca `cancelled` preservando historial).
+  Botón "Sincronizar ahora" en Configuración. Indicador discreto "Google
+  Calendar" en `/calendar` y `/today`; los eventos externos son de solo
+  lectura (sin Completar/Cancelar/editar) hasta que el Bloque 8 agregue
+  "Vincular"/"Convertir en actividad CRM". Guard en `updateEventStatus`
+  que nunca borra un evento real de Google salvo que la fila sea
+  `source='crm'`.
+
+  Verificado en vivo contra la cuenta de Google real ya conectada
+  (con permiso explícito del usuario, solo lectura salvo dos eventos de
+  prueba descartables creados y borrados por esta misma verificación):
+  36 eventos personales reales importados correctamente como filas
+  externas sin crear ningún contacto/propiedad/tarea; sync repetido sin
+  duplicar (idempotencia por `sync_token`); un evento de prueba puramente
+  externo cancelado en Google → fila eliminada de la DB; un evento creado
+  desde el CRM (`source='crm'`) cancelado en Google → fila quedó
+  `cancelled`, no se borró. Todos los datos de prueba (filas `activities`,
+  eventos de Google, `sync_token`) limpiados al final.
+- **Bloques 7-9** — pendientes.

@@ -116,9 +116,11 @@ export async function listOverdueTasks(
 export type TodayActivity = {
   id: string;
   type: ActivityType;
+  title: string | null;
   description: string | null;
   starts_at: string;
   status: ActivityStatus;
+  source: "crm" | "google_calendar";
   link: TodayLink | null;
 };
 
@@ -131,7 +133,7 @@ export async function listTodayActivities(
   const { data, error } = await supabase
     .from("activities")
     .select(
-      "id, type, description, starts_at, status, contact_id, property_id, acquisition_id, search_id, lead_id, deal_id",
+      "id, type, title, description, starts_at, status, source, contact_id, property_id, acquisition_id, search_id, lead_id, deal_id",
     )
     .eq("organization_id", organizationId)
     .eq("status", "scheduled")

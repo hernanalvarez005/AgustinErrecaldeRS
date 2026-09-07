@@ -10,12 +10,14 @@ import type { ActivityStatus, ActivityType } from "@/types/database.types";
 export type CalendarEvent = {
   id: string;
   type: ActivityType;
+  title: string | null;
   description: string | null;
   starts_at: string;
   ends_at: string | null;
   status: ActivityStatus;
   location: string | null;
   meeting_url: string | null;
+  source: "crm" | "google_calendar";
   link: EngagementLink | null;
 };
 
@@ -29,7 +31,7 @@ export async function listEventsInRange(
   const { data, error } = await supabase
     .from("activities")
     .select(
-      "id, type, description, starts_at, ends_at, status, location, meeting_url, contact_id, property_id, acquisition_id, search_id, lead_id, deal_id",
+      "id, type, title, description, starts_at, ends_at, status, location, meeting_url, source, contact_id, property_id, acquisition_id, search_id, lead_id, deal_id",
     )
     .eq("organization_id", organizationId)
     .gte("starts_at", startUtc)

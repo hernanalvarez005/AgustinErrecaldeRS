@@ -1,7 +1,9 @@
+import { CalendarDays } from "lucide-react";
 import Link from "next/link";
 
 import { completeTask, rescheduleTask } from "@/lib/actions/engagement";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -136,8 +138,13 @@ function AgendaList({ activities }: { activities: TodayActivity[] }) {
           </span>
           <div className="min-w-0">
             <LinkOrPlain link={activity.link}>
-              {ACTIVITY_TYPE_LABELS[activity.type]}
+              {activity.title || ACTIVITY_TYPE_LABELS[activity.type]}
             </LinkOrPlain>
+            {activity.source === "google_calendar" ? (
+              <Badge variant="outline" className="ml-2">
+                <CalendarDays /> Google Calendar
+              </Badge>
+            ) : null}
             {activity.link ? (
               <p className="text-muted-foreground">{activity.link.label}</p>
             ) : null}

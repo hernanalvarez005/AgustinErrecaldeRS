@@ -414,6 +414,8 @@ export interface Database {
           location: string | null;
           meeting_url: string | null;
           google_event_id: string | null;
+          source: "crm" | "google_calendar";
+          google_updated_at: string | null;
           created_by: string | null;
           created_at: string;
           updated_at: string;
@@ -436,6 +438,8 @@ export interface Database {
           location?: string | null;
           meeting_url?: string | null;
           google_event_id?: string | null;
+          source?: "crm" | "google_calendar";
+          google_updated_at?: string | null;
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -917,6 +921,8 @@ export interface Database {
           refresh_token: string;
           token_expiry: string;
           calendar_id: string;
+          sync_token: string | null;
+          last_synced_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -927,6 +933,8 @@ export interface Database {
           refresh_token: string;
           token_expiry: string;
           calendar_id?: string;
+          sync_token?: string | null;
+          last_synced_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

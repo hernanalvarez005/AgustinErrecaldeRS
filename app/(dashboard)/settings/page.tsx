@@ -1,9 +1,10 @@
 import { disconnectGoogleCalendar } from "@/app/(dashboard)/settings/actions";
+import { SyncNowButton } from "@/components/settings/sync-now-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentMembership, getProfile } from "@/lib/auth/session";
 import { getGoogleCalendarConnection } from "@/lib/data/google-calendar";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 
 const ROLE_LABELS: Record<string, string> = {
   owner: "Dueño",
@@ -109,14 +110,25 @@ export default async function SettingsPage({
               </p>
               <p className="text-muted-foreground">
                 Los eventos que agendes en la Agenda del CRM se copian a este
-                calendario de Google. La sincronización es en un solo sentido:
-                lo que cambies directamente en Google Calendar no vuelve al CRM.
+                calendario de Google, y los que crees o edites directamente en
+                Google Calendar se importan al CRM como eventos externos al
+                sincronizar — nunca crean automáticamente un contacto, propiedad
+                o tarea.
               </p>
-              <form action={disconnectGoogleCalendar}>
-                <Button type="submit" variant="outline" size="sm">
-                  Desconectar
-                </Button>
-              </form>
+              <p className="text-muted-foreground">
+                Última sincronización:{" "}
+                {googleConnection.last_synced_at
+                  ? formatDateTime(googleConnection.last_synced_at)
+                  : "todavía no se sincronizó"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <SyncNowButton />
+                <form action={disconnectGoogleCalendar}>
+                  <Button type="submit" variant="outline" size="sm">
+                    Desconectar
+                  </Button>
+                </form>
+              </div>
             </>
           ) : (
             <>
