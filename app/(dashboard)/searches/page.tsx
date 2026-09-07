@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,6 +22,7 @@ import {
 import { requireMembership } from "@/lib/auth/session";
 import { listSearches } from "@/lib/data/searches";
 import { formatDate, formatEventDay } from "@/lib/format";
+import { searchStatusTone } from "@/lib/status-tone";
 import { PROPERTY_TYPE_LABELS } from "@/lib/validations/property";
 import {
   SEARCH_OBJECTIVE_LABELS,
@@ -233,9 +234,9 @@ export default async function SearchesPage({
                     {formatBudget(s.min_price, s.max_price, s.currency)}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">
+                    <StatusBadge tone={searchStatusTone(s.status)}>
                       {SEARCH_STATUS_LABELS[s.status]}
-                    </Badge>
+                    </StatusBadge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {formatEventDay(s.last_interaction_at) ?? "—"}

@@ -267,3 +267,96 @@ hora en negrita, y el flujo "Completar" probado de punta a punta (la tarea
 desaparece de la lista y el estado vacío "Sin tareas para hoy." se muestra
 correctamente). Los datos de prueba se borraron después de la verificación
 (5/5 registros confirmados eliminados).
+
+## Bloque UI-4 — Entidades
+
+**Qué cambió:**
+
+- [app/(dashboard)/contacts/[id]/page.tsx](<../app/(dashboard)/contacts/[id]/page.tsx>)
+  reordenada según la jerarquía de la spec (puntos 36-40): IDENTIDAD
+  (header + roles + acciones rápidas Llamar/WhatsApp/Email/+Agendar/+Tarea
+  como botones, no links sueltos) → NECESIDAD (Búsquedas, con
+  `StatusBadge`/`searchStatusTone`) → ÚLTIMO CONTACTO/PRÓXIMA ACCIÓN (esta
+  última con acento de borde primary) → ACTIVIDAD COMERCIAL (Visitas,
+  Propiedades presentadas, Registrar actividad, Tareas — prioridad ahora en
+  `StatusBadge` —, Notas, Timeline) → **DATOS PERSONALES** (nuevo: DNI,
+  dirección, profesión, fecha de nacimiento — `getContact` ya traía estos
+  campos con `select("*")`, pero la ficha nunca los mostraba; hueco real de
+  contenido encontrado durante este Bloque, no solo un problema de orden).
+  Grupos separados por una etiqueta chica/muted (mismo lenguaje visual que
+  los headers de sección del sidebar de UI-2), no por un componente nuevo.
+- [app/(dashboard)/properties/[id]/page.tsx](<../app/(dashboard)/properties/[id]/page.tsx>)
+  reordenada según los puntos 41-45: header con precio grande y estado en
+  `StatusBadge` (antes enterrado en un párrafo muted junto a la dirección),
+  botón "Agendar visita" pasa a primary. Tab Resumen reordenado:
+  Propietarios → Rendimiento (ahora cuenta Interesados/Ofertas en vez de
+  repetir precio, que ya está en el header) → **Próxima acción** (nuevo,
+  mismo patrón que en ficha cliente — no existía ningún lugar en la ficha
+  de propiedad que mostrara la próxima tarea pendiente) → Coincidencias →
+  Historial de precios → **Información técnica** (nuevo: dormitorios,
+  baños, cocheras, precio/m², superficies, antigüedad, expensas — ninguno
+  de estos campos se mostraba en ningún lado de la ficha pese a que
+  `getProperty` ya los trae con `select("*")`; el punto 41 de la spec
+  pide explícitamente esta sección, y no existía). Badges de estado en
+  Interesados y prioridad en Tareas (tab Actividad) pasan a `StatusBadge`.
+  Botones de submit ("Registrar oferta", "Registrar", "Agregar", "Guardar
+  nota", "Agregar propietario") pasan de `outline` a `default` (primary) —
+  cada uno es la única acción de guardado dentro de su propio formulario.
+- Listados (`/properties`, `/leads`, `/searches`): el badge de estado pasa
+  de `Badge variant="secondary"` a `StatusBadge` con el tono correspondiente
+  — mismo patrón ya aplicado en `/today` (Bloque UI-3). `/contacts` no se
+  tocó: sus badges son de _rol_ (Comprador/Vendedor), no de estado, y no
+  tienen semántica de tono.
+
+**Componentes nuevos:** ninguno — solo consumo de `StatusBadge`/
+`lib/status-tone.ts` (UI-1) en más pantallas.
+
+**Componentes eliminados:** ninguno. `Badge` genérico ya no se importa en
+`leads/page.tsx`, `searches/page.tsx` ni `properties/page.tsx` (reemplazado
+100% por `StatusBadge` en esos archivos); sigue en uso donde corresponde
+(roles de contacto, tipo/operación de propiedad — no son "estado").
+
+**Decisiones visuales:**
+
+- Los grupos ("NECESIDAD", "ACTIVIDAD COMERCIAL", "DATOS PERSONALES") son
+  un `<p>` con una clase compartida (`GROUP_LABEL_CLASS`), no un componente
+  nuevo — una sola línea de className no ameritaba envoltorio (punto 91,
+  evitar sobreabstracción).
+- No se creó un componente `EntityHeader` genérico pese a que la spec lo
+  sugiere como candidato (`docs/DESIGN_SYSTEM.md`): los headers de cliente
+  y propiedad comparten el patrón visual pero no la data ni las acciones —
+  abstraerlos ahora habría sido la sobreabstracción que el punto 91 pide
+  evitar. Se reevalúa si aparece un tercer header con la misma forma.
+- "Datos personales" e "Información técnica" solo se renderizan si hay al
+  menos un campo cargado (`.filter(...).length > 0`) — no se agregan
+  secciones vacías a fichas de registros viejos que nunca cargaron esos
+  campos.
+
+**Pantallas modificadas:** `/contacts/[id]`, `/properties/[id]`,
+`/properties`, `/leads`, `/searches`.
+
+**Responsive:** sin verificación dedicada a 375px en este Bloque — las
+fichas ya usaban `max-w-3xl` + `flex-wrap` desde V2 (incluida la corrección
+de `flex-1`/`min-w-*` del Bloque H), y los cambios de este Bloque son
+reordenamiento y color, no layout nuevo. Verificación mobile dedicada de
+fichas queda para Bloque UI-8.
+
+**Charts:** no aplica.
+
+**Deuda pendiente / seguimiento:** ninguna nueva — los dos huecos de
+contenido reales encontrados (datos personales de cliente, información
+técnica de propiedad) se corrigieron en este mismo Bloque, no se
+documentaron como deuda.
+
+**Verificación:** `npx next typegen`, `npm run typecheck`, `npm run lint`,
+`npm run build` y `npm run format` sin errores. Se sembró un cliente con
+todos los campos personales, una búsqueda, una propiedad con todos los
+campos técnicos, un vínculo de propietario y tareas en ambas fichas —
+verificado en vivo contra `localhost:3000`: orden de secciones correcto en
+ambas fichas (confirmado vía `get_page_text`, texto completo revisado
+línea por línea), coincidencia del 100% mostrada correctamente en
+"Coincidencias" (la búsqueda y la propiedad sembradas calzan a propósito),
+`StatusBadge` con tono correcto en "Buscando" (primary), "Activa"
+(primary), y en los listados de `/properties`. Sin errores de consola más
+allá del artefacto ya documentado de HMR del dev server. Los 7 registros de
+prueba se borraron y se confirmó vacío después.

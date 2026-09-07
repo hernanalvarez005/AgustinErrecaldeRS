@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/table";
 import { requireMembership } from "@/lib/auth/session";
 import { listProperties } from "@/lib/data/properties";
+import { propertyStatusTone } from "@/lib/status-tone";
 import {
   OPERATION_TYPE_LABELS,
   OPERATION_TYPES,
@@ -176,9 +177,9 @@ export default async function PropertiesPage({
                     {property.primary_owner_name ?? "—"}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">
+                    <StatusBadge tone={propertyStatusTone(property.status)}>
                       {PROPERTY_STATUS_LABELS[property.status]}
-                    </Badge>
+                    </StatusBadge>
                   </TableCell>
                 </TableRow>
               ))}

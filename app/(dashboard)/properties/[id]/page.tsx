@@ -7,6 +7,7 @@ import {
   createOffer,
   removeOwner,
 } from "@/app/(dashboard)/properties/actions";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,6 +50,11 @@ import {
 import { getRecommendationsForProperty } from "@/lib/data/recommendations";
 import { getVisitFeedbackForProperty } from "@/lib/data/visit-feedback";
 import { daysSinceNow, formatDate, formatEventDay } from "@/lib/format";
+import {
+  propertyStatusTone,
+  recommendationStatusTone,
+  taskPriorityTone,
+} from "@/lib/status-tone";
 import {
   ACTIVITY_TYPE_LABELS,
   LOGGABLE_ACTIVITY_TYPES,
@@ -133,8 +139,51 @@ export default async function PropertyDetailPage({
     (a) => a.type === "property_visit",
   ).length;
   const daysInPortfolio = daysSinceNow(property.created_at);
+  const nextAction = pendingTasks
+    .filter((t) => t.due_at)
+    .sort(
+      (a, b) =>
+        new Date(a.due_at as string).getTime() -
+        new Date(b.due_at as string).getTime(),
+    )[0];
 
   const timeline = buildTimeline({ notes, activities, tasks });
+
+  const technicalDetails = [
+    { label: "Dormitorios", value: property.bedrooms },
+    { label: "Baños", value: property.bathrooms },
+    { label: "Cocheras", value: property.garage_spaces },
+    { label: "Precio/m²", value: pricePerSquareMeter },
+    {
+      label: "Superficie total",
+      value: property.total_area ? `${property.total_area} m²` : null,
+    },
+    {
+      label: "Superficie cubierta",
+      value: property.covered_area ? `${property.covered_area} m²` : null,
+    },
+    {
+      label: "Superficie descubierta",
+      value: property.uncovered_area ? `${property.uncovered_area} m²` : null,
+    },
+    {
+      label: "Terreno",
+      value: property.lot_area ? `${property.lot_area} m²` : null,
+    },
+    {
+      label: "Antigüedad",
+      value:
+        property.age_years !== null
+          ? `${property.age_years} ${property.age_years === 1 ? "año" : "años"}`
+          : null,
+    },
+    {
+      label: "Expensas",
+      value: property.expenses
+        ? `$ ${property.expenses.toLocaleString("es-AR")}`
+        : null,
+    },
+  ].filter((row) => row.value !== null && row.value !== undefined);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -153,19 +202,25 @@ export default async function PropertyDetailPage({
               <Pencil />
             </Button>
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             <Badge variant="secondary">
               {PROPERTY_TYPE_LABELS[property.property_type]}
             </Badge>
             <Badge variant="secondary">
               {OPERATION_TYPE_LABELS[property.operation_type]}
             </Badge>
-            <Badge>{PROPERTY_STATUS_LABELS[property.status]}</Badge>
+            <StatusBadge tone={propertyStatusTone(property.status)}>
+              {PROPERTY_STATUS_LABELS[property.status]}
+            </StatusBadge>
           </div>
+          {price ? (
+            <p className="text-xl font-semibold">{price}</p>
+          ) : (
+            <p className="text-muted-foreground text-sm">Sin precio cargado</p>
+          )}
           <p className="text-muted-foreground text-sm">
             {[address, zone].filter(Boolean).join(" · ") ||
               "Sin dirección cargada"}
-            {price ? ` · ${price}` : ""}
           </p>
           <p className="text-muted-foreground text-xs">
             {primaryOwner ? (
@@ -190,7 +245,6 @@ export default async function PropertyDetailPage({
         <Button
           render={<Link href={`/calendar/new?propertyId=${property.id}`} />}
           nativeButton={false}
-          variant="outline"
           size="sm"
         >
           Agendar visita
@@ -207,44 +261,9 @@ export default async function PropertyDetailPage({
         </TabsList>
 
         <TabsContent value="resumen" className="space-y-6 pt-4">
-          <Card>
+          <Card size="sm">
             <CardHeader>
-              <CardTitle className="text-sm">Rendimiento</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-              <div>
-                <dt className="text-muted-foreground">Días en cartera</dt>
-                <dd className="text-lg font-medium">{daysInPortfolio}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Visitas</dt>
-                <dd className="text-lg font-medium">{visitsCount}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Precio actual</dt>
-                <dd className="text-lg font-medium">{price ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">Precio/m²</dt>
-                <dd className="text-lg font-medium">
-                  {pricePerSquareMeter ?? "—"}
-                </dd>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Historial de precios</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PriceHistory entries={priceHistory} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Propietarios</CardTitle>
+              <CardTitle>Propietarios</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {owners.length === 0 ? (
@@ -313,7 +332,7 @@ export default async function PropertyDetailPage({
                     />
                     Principal
                   </label>
-                  <Button type="submit" variant="outline">
+                  <Button type="submit" variant="default">
                     Agregar propietario
                   </Button>
                 </form>
@@ -321,9 +340,46 @@ export default async function PropertyDetailPage({
             </CardContent>
           </Card>
 
-          <Card>
+          <Card size="sm">
             <CardHeader>
-              <CardTitle className="text-sm">Coincidencias</CardTitle>
+              <CardTitle>Rendimiento</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+              <div>
+                <dt className="text-muted-foreground">Días en cartera</dt>
+                <dd className="text-lg font-medium">{daysInPortfolio}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Interesados</dt>
+                <dd className="text-lg font-medium">
+                  {recommendations.length}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Visitas</dt>
+                <dd className="text-lg font-medium">{visitsCount}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Ofertas</dt>
+                <dd className="text-lg font-medium">{offers.length}</dd>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card size="sm">
+            <CardContent className="pt-6 text-sm">
+              <dt className="text-muted-foreground">Próxima acción</dt>
+              <dd className="border-primary/30 border-l-2 pl-3 font-medium">
+                {nextAction
+                  ? `${nextAction.title} · ${formatDate(nextAction.due_at)}`
+                  : "—"}
+              </dd>
+            </CardContent>
+          </Card>
+
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle>Coincidencias</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {matches.length === 0 ? (
@@ -388,12 +444,37 @@ export default async function PropertyDetailPage({
               </p>
             </CardContent>
           </Card>
+
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle>Historial de precios</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PriceHistory entries={priceHistory} />
+            </CardContent>
+          </Card>
+
+          {technicalDetails.length > 0 ? (
+            <Card size="sm">
+              <CardHeader>
+                <CardTitle>Información técnica</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                {technicalDetails.map((row) => (
+                  <div key={row.label}>
+                    <dt className="text-muted-foreground">{row.label}</dt>
+                    <dd>{row.value}</dd>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
         </TabsContent>
 
         <TabsContent value="interesados" className="pt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Interesados</CardTitle>
+              <CardTitle>Interesados</CardTitle>
             </CardHeader>
             <CardContent>
               {recommendations.length === 0 ? (
@@ -415,9 +496,9 @@ export default async function PropertyDetailPage({
                             ? `${r.contact.first_name} ${r.contact.last_name}`
                             : "Contacto"}
                         </Link>
-                        <Badge variant="secondary">
+                        <StatusBadge tone={recommendationStatusTone(r.status)}>
                           {RECOMMENDATION_STATUS_LABELS[r.status]}
-                        </Badge>
+                        </StatusBadge>
                       </div>
                       <p className="text-muted-foreground text-xs">
                         {RECOMMENDATION_CHANNEL_LABELS[r.channel]} ·{" "}
@@ -466,7 +547,7 @@ export default async function PropertyDetailPage({
         <TabsContent value="visitas" className="pt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Visitas</CardTitle>
+              <CardTitle>Visitas</CardTitle>
             </CardHeader>
             <CardContent>
               <VisitFeedbackList
@@ -485,7 +566,7 @@ export default async function PropertyDetailPage({
         <TabsContent value="ofertas" className="space-y-6 pt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Ofertas</CardTitle>
+              <CardTitle>Ofertas</CardTitle>
             </CardHeader>
             <CardContent>
               <OfferThread propertyId={property.id} offers={offers} />
@@ -494,7 +575,7 @@ export default async function PropertyDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Registrar oferta</CardTitle>
+              <CardTitle>Registrar oferta</CardTitle>
             </CardHeader>
             <CardContent>
               <form
@@ -543,7 +624,7 @@ export default async function PropertyDetailPage({
                   placeholder="Notas (opcional)"
                   className="w-full"
                 />
-                <Button type="submit" variant="outline">
+                <Button type="submit" variant="default">
                   Registrar oferta
                 </Button>
               </form>
@@ -554,7 +635,7 @@ export default async function PropertyDetailPage({
         <TabsContent value="actividad" className="space-y-6 pt-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-sm">Registrar actividad</CardTitle>
+              <CardTitle>Registrar actividad</CardTitle>
               <Button
                 render={
                   <Link href={`/calendar/new?propertyId=${property.id}`} />
@@ -597,7 +678,7 @@ export default async function PropertyDetailPage({
                   placeholder="Detalle (opcional)"
                   className="min-w-40 flex-1"
                 />
-                <Button type="submit" variant="outline">
+                <Button type="submit" variant="default">
                   Registrar
                 </Button>
               </form>
@@ -606,7 +687,7 @@ export default async function PropertyDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Tareas</CardTitle>
+              <CardTitle>Tareas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {pendingTasks.length === 0 ? (
@@ -620,12 +701,16 @@ export default async function PropertyDetailPage({
                       key={task.id}
                       className="flex items-center justify-between gap-2 text-sm"
                     >
-                      <div>
-                        <span className="font-medium">{task.title}</span>{" "}
-                        <span className="text-muted-foreground">
-                          · {TASK_PRIORITY_LABELS[task.priority]}
-                          {task.due_at ? ` · ${formatDate(task.due_at)}` : ""}
-                        </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="font-medium">{task.title}</span>
+                        <StatusBadge tone={taskPriorityTone(task.priority)}>
+                          {TASK_PRIORITY_LABELS[task.priority]}
+                        </StatusBadge>
+                        {task.due_at ? (
+                          <span className="text-muted-foreground">
+                            {formatDate(task.due_at)}
+                          </span>
+                        ) : null}
                       </div>
                       <form
                         action={completeTask.bind(
@@ -670,7 +755,7 @@ export default async function PropertyDetailPage({
                   </SelectContent>
                 </Select>
                 <Input name="dueAt" type="date" className="w-40" />
-                <Button type="submit" variant="outline">
+                <Button type="submit" variant="default">
                   Agregar
                 </Button>
               </form>
@@ -679,7 +764,7 @@ export default async function PropertyDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Notas</CardTitle>
+              <CardTitle>Notas</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <form
@@ -691,7 +776,7 @@ export default async function PropertyDetailPage({
                   placeholder="Agregar una nota..."
                   required
                 />
-                <Button type="submit" variant="outline">
+                <Button type="submit" variant="default">
                   Guardar nota
                 </Button>
               </form>
@@ -700,7 +785,7 @@ export default async function PropertyDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Timeline</CardTitle>
+              <CardTitle>Timeline</CardTitle>
             </CardHeader>
             <CardContent>
               <Timeline entries={timeline} />

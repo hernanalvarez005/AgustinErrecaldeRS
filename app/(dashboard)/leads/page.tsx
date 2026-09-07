@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,6 +22,7 @@ import {
 import { requireMembership } from "@/lib/auth/session";
 import { listLeads } from "@/lib/data/leads";
 import { formatDate, formatRelativeTime } from "@/lib/format";
+import { leadStatusTone } from "@/lib/status-tone";
 import {
   CONTACT_SOURCE_LABELS,
   CONTACT_SOURCES,
@@ -163,9 +164,9 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
                     {lead.source ? CONTACT_SOURCE_LABELS[lead.source] : "—"}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">
+                    <StatusBadge tone={leadStatusTone(lead.status)}>
                       {LEAD_STATUS_LABELS[lead.status]}
-                    </Badge>
+                    </StatusBadge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {formatRelativeTime(lead.created_at)}
