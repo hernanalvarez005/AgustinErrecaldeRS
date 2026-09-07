@@ -157,4 +157,30 @@ push → reporte → confirmación para el siguiente Bloque.
   desde el CRM (`source='crm'`) cancelado en Google → fila quedó
   `cancelled`, no se borró. Todos los datos de prueba (filas `activities`,
   eventos de Google, `sync_token`) limpiados al final.
-- **Bloques 7-9** — pendientes.
+
+- **Bloque 8 (UI de eventos externos y vinculación)** — ✅ completo. Sin
+  migración nueva — reutiliza las FKs de `activities` que ya existían.
+  `LinkExternalEventDialog` (`components/calendar/link-external-event-dialog.tsx`)
+  ofrece, desde cualquier evento externo en `/calendar`, "Vincular" (setea
+  Cliente/Propiedad/Búsqueda/Captación/Operación + tipo, sin tocar
+  `source` — sigue de solo lectura y sincronizado desde Google) y
+  "Convertir en actividad CRM" (lo mismo, más `source='crm'`, con lo que
+  pasa a tener los botones Completar/Cancelar y edición normales). Ninguna
+  de las dos acciones toca el evento en Google — su título ahí sigue
+  siendo el que escribió el asesor, y se sigue reflejando por el sync
+  normal. `lib/google/calendar-sync.ts` ahora decide borrar-vs-cancelar un
+  evento eliminado en Google por si está "vinculado" (`source='crm'` O
+  cualquier FK seteada), no solo por `source`, para que un evento
+  meramente vinculado (no convertido) tampoco pierda su relación con un
+  hard-delete. Nuevas `listAcquisitionOptions`/`listSearchOptions` en
+  `lib/data/` para los pickers.
+
+  Verificado en vivo: "Vincular" un evento externo de prueba a un cliente
+  → guardó la FK, mantuvo `source='google_calendar'`, el evento siguió de
+  solo lectura mostrando el link resuelto y el botón pasó a "Editar
+  vínculo" con el cliente preseleccionado al reabrir. "Convertir en
+  actividad CRM" cambiando también el tipo → `source` pasó a `'crm'`, el
+  evento ganó los botones Completar/Cancelar y el título volvió a ser
+  editable, igual que cualquier actividad creada normalmente. Datos de
+  prueba limpiados al final.
+- **Bloques 7 y 9** — pendientes.

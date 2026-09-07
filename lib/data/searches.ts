@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { OPERATION_TYPE_LABELS } from "@/lib/validations/property";
 import type {
   SearchObjective,
   SearchStatus,
@@ -44,6 +45,27 @@ export async function listSearches({
     return [];
   }
   return data;
+}
+
+/** Every search in the org, contact + operation type resolved into one label — for pickers like the external-calendar-event "Vincular" dialog (V2.2 Bloque 8). */
+export async function listSearchOptions(organizationId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("search_overview")
+    .select("id, contact_first_name, contact_last_name, operation_type")
+    .eq("organization_id", organizationId)
+    .order("updated_at", { ascending: false })
+    .limit(200);
+
+  if (error) {
+    console.error("Failed to list searches for picker:", error.message);
+    return [];
+  }
+
+  return data.map((s) => ({
+    id: s.id,
+    title: `${s.contact_first_name} ${s.contact_last_name} — ${OPERATION_TYPE_LABELS[s.operation_type]}`,
+  }));
 }
 
 /**

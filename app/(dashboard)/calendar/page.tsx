@@ -3,12 +3,17 @@ import Link from "next/link";
 
 import { updateEventStatus } from "@/app/(dashboard)/calendar/actions";
 import { MonthGrid } from "@/components/calendar/month-grid";
+import { LinkExternalEventDialog } from "@/components/calendar/link-external-event-dialog";
 import { VisitFeedbackDialog } from "@/components/activities/visit-feedback-dialog";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireMembership } from "@/lib/auth/session";
+import { listAcquisitionOptions } from "@/lib/data/acquisitions";
 import { listEventsInRange, type CalendarEvent } from "@/lib/data/calendar";
+import { listDealOptions } from "@/lib/data/deals";
+import { listContactOptions, listPropertyOptions } from "@/lib/data/properties";
+import { listSearchOptions } from "@/lib/data/searches";
 import {
   addDaysToYmd,
   getBusinessRangeBoundsUtc,
@@ -45,7 +50,22 @@ function labelForYmd(ymd: string, options: Intl.DateTimeFormatOptions) {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-function EventRow({ event }: { event: CalendarEvent }) {
+type EntityOption = { id: string; label: string };
+type LinkOptions = {
+  contacts: EntityOption[];
+  properties: EntityOption[];
+  searches: EntityOption[];
+  acquisitions: EntityOption[];
+  deals: EntityOption[];
+};
+
+function EventRow({
+  event,
+  linkOptions,
+}: {
+  event: CalendarEvent;
+  linkOptions: LinkOptions;
+}) {
   return (
     <li className="flex flex-col gap-2 rounded-md border p-2 text-sm sm:flex-row sm:items-start sm:gap-3">
       <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -92,7 +112,27 @@ function EventRow({ event }: { event: CalendarEvent }) {
           ) : null}
         </div>
       </div>
-      {event.status === "scheduled" && event.source !== "google_calendar" ? (
+      {event.source === "google_calendar" ? (
+        <div className="flex shrink-0 gap-1">
+          <LinkExternalEventDialog
+            eventId={event.id}
+            currentType={event.type}
+            currentContactId={event.contact_id}
+            currentPropertyId={event.property_id}
+            currentSearchId={event.search_id}
+            currentAcquisitionId={event.acquisition_id}
+            currentDealId={event.deal_id}
+            isLinked={Boolean(
+              event.contact_id ||
+              event.property_id ||
+              event.search_id ||
+              event.acquisition_id ||
+              event.deal_id,
+            )}
+            {...linkOptions}
+          />
+        </div>
+      ) : event.status === "scheduled" ? (
         <div className="flex shrink-0 gap-1">
           {event.type === "property_visit" ||
           event.type === "acquisition_visit" ? (
@@ -180,6 +220,42 @@ export default async function CalendarPage({
     startUtc,
     endUtc,
   );
+
+  // Only fetch the "Vincular" pickers' options when there's actually an
+  // external event in range to link — five extra queries every calendar
+  // load isn't worth it for a feature most days won't touch.
+  const hasExternalEvents = events.some((e) => e.source === "google_calendar");
+  const linkOptions: LinkOptions = hasExternalEvents
+    ? await (async () => {
+        const [contacts, properties, searches, acquisitions, deals] =
+          await Promise.all([
+            listContactOptions(membership.organization.id),
+            listPropertyOptions(membership.organization.id),
+            listSearchOptions(membership.organization.id),
+            listAcquisitionOptions(membership.organization.id),
+            listDealOptions(membership.organization.id),
+          ]);
+        return {
+          contacts: contacts.map((c) => ({
+            id: c.id,
+            label: `${c.first_name} ${c.last_name}`,
+          })),
+          properties: properties.map((p) => ({ id: p.id, label: p.title })),
+          searches: searches.map((s) => ({ id: s.id, label: s.title })),
+          acquisitions: acquisitions.map((a) => ({
+            id: a.id,
+            label: a.title,
+          })),
+          deals: deals.map((d) => ({ id: d.id, label: d.title })),
+        };
+      })()
+    : {
+        contacts: [],
+        properties: [],
+        searches: [],
+        acquisitions: [],
+        deals: [],
+      };
 
   const eventsByYmd = new Map<string, CalendarEvent[]>();
   for (const event of events) {
@@ -277,7 +353,11 @@ export default async function CalendarPage({
                 ) : (
                   <ul className="space-y-2">
                     {dayEvents.map((event) => (
-                      <EventRow key={event.id} event={event} />
+                      <EventRow
+                        key={event.id}
+                        event={event}
+                        linkOptions={linkOptions}
+                      />
                     ))}
                   </ul>
                 )}

@@ -16,6 +16,7 @@ import { ACTIVITY_TYPE_LABELS } from "@/lib/validations/activity";
 import {
   calendarEventSchema,
   CALENDAR_EVENT_STATUSES,
+  linkExternalEventSchema,
 } from "@/lib/validations/calendar";
 import { visitFeedbackSchema } from "@/lib/validations/visit-feedback";
 import type { ActivityStatus, ActivityType } from "@/types/database.types";
@@ -356,4 +357,63 @@ export async function finalizeVisit(
   if (activity.contact_id) revalidatePath(`/contacts/${activity.contact_id}`);
   if (activity.property_id)
     revalidatePath(`/properties/${activity.property_id}`);
+}
+
+/**
+ * "Vincular" and "Convertir en actividad CRM" on an imported external
+ * event (V2.2 Bloque 8, spec punto 27) — the only difference between the
+ * two is whether `source` flips to `crm`: "Vincular" just attaches an
+ * entity (the row stays a read-only, sync-managed external event with a
+ * working link on it) while "Convertir" additionally hands the row over
+ * to the CRM's own edit/complete/cancel flow. Either way this never
+ * touches Google — the event's title there stays whatever the advisor
+ * actually wrote on Google, and keeps flowing back in through the normal
+ * sync on every later "Sincronizar ahora".
+ */
+export async function linkExternalEvent(
+  eventId: string,
+  convert: boolean,
+  formData: FormData,
+): Promise<{ error: string } | void> {
+  const orNone = (value: FormDataEntryValue | null) =>
+    value === "none" ? "" : value;
+  const parsed = linkExternalEventSchema.safeParse({
+    type: formData.get("type"),
+    contactId: orNone(formData.get("contactId")),
+    propertyId: orNone(formData.get("propertyId")),
+    searchId: orNone(formData.get("searchId")),
+    acquisitionId: orNone(formData.get("acquisitionId")),
+    dealId: orNone(formData.get("dealId")),
+  });
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Revisá los datos ingresados.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("activities")
+    .update({
+      type: parsed.data.type,
+      contact_id: parsed.data.contactId ?? null,
+      property_id: parsed.data.propertyId ?? null,
+      search_id: parsed.data.searchId ?? null,
+      acquisition_id: parsed.data.acquisitionId ?? null,
+      deal_id: parsed.data.dealId ?? null,
+      ...(convert ? { source: "crm" as const } : {}),
+    })
+    .eq("id", eventId);
+
+  if (error) {
+    console.error("Failed to link external event:", error.message);
+    return { error: "No pudimos guardar el vínculo. Intentá nuevamente." };
+  }
+
+  revalidatePath("/calendar");
+  revalidatePath("/today");
+  if (parsed.data.contactId)
+    revalidatePath(`/contacts/${parsed.data.contactId}`);
+  if (parsed.data.propertyId)
+    revalidatePath(`/properties/${parsed.data.propertyId}`);
 }

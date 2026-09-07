@@ -111,7 +111,9 @@ export async function syncGoogleCalendarEvents(): Promise<CalendarSyncResult> {
   for (const event of result.events) {
     const { data: existing, error: lookupError } = await supabase
       .from("activities")
-      .select("id, source, status, google_updated_at")
+      .select(
+        "id, source, status, google_updated_at, contact_id, property_id, acquisition_id, search_id, deal_id",
+      )
       .eq("organization_id", membership.organization.id)
       .eq("google_event_id", event.id)
       .maybeSingle();
@@ -126,7 +128,22 @@ export async function syncGoogleCalendarEvents(): Promise<CalendarSyncResult> {
 
     if (event.status === "cancelled") {
       if (!existing) continue; // a cancelled event we never had — nothing to do
-      if (existing.source === "google_calendar") {
+      // "Linked" covers both a fully converted CRM activity (source='crm')
+      // and a still-external event the advisor merely "Vinculó" (Bloque 8)
+      // to a contact/property/search/acquisition/deal without converting
+      // it — either way there's now a real CRM relation worth preserving,
+      // so it must never be hard-deleted just because Google's copy went
+      // away (spec punto 29).
+      const isLinked =
+        existing.source === "crm" ||
+        Boolean(
+          existing.contact_id ||
+          existing.property_id ||
+          existing.acquisition_id ||
+          existing.search_id ||
+          existing.deal_id,
+        );
+      if (!isLinked) {
         // Purely external, never linked to anything CRM-side — no history
         // worth keeping (spec punto 29: "un evento puramente externo
         // eliminado puede dejar de mostrarse/archivarse").

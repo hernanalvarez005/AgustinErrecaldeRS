@@ -38,3 +38,21 @@ export const calendarEventSchema = z
   });
 
 export type CalendarEventInput = z.infer<typeof calendarEventSchema>;
+
+/**
+ * "Vincular"/"Convertir en actividad CRM" on an imported external event
+ * (V2.2 Bloque 8, spec punto 27): pick a type and, optionally, any of the
+ * five entities the spec names — same "no exactly-one constraint" as the
+ * rest of `activities` (a visit is routinely both a contact AND a
+ * property, see calendarEventSchema above).
+ */
+export const linkExternalEventSchema = z.object({
+  type: z.enum(LOGGABLE_ACTIVITY_TYPES),
+  contactId: z.preprocess(emptyToUndefined, z.string().trim().optional()),
+  propertyId: z.preprocess(emptyToUndefined, z.string().trim().optional()),
+  searchId: z.preprocess(emptyToUndefined, z.string().trim().optional()),
+  acquisitionId: z.preprocess(emptyToUndefined, z.string().trim().optional()),
+  dealId: z.preprocess(emptyToUndefined, z.string().trim().optional()),
+});
+
+export type LinkExternalEventInput = z.infer<typeof linkExternalEventSchema>;

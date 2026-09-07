@@ -63,6 +63,48 @@ export async function listAcquisitions(organizationId: string) {
   }));
 }
 
+/** Every acquisition in the org, property + owner resolved into one label — for pickers like the external-calendar-event "Vincular" dialog (V2.2 Bloque 8). */
+export async function listAcquisitionOptions(organizationId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("property_acquisitions")
+    .select("id, property_id, primary_owner_contact_id")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to list acquisitions for picker:", error.message);
+    return [];
+  }
+  if (data.length === 0) return [];
+
+  const propertyIds = [...new Set(data.map((a) => a.property_id))];
+  const contactIds = [...new Set(data.map((a) => a.primary_owner_contact_id))];
+  const [{ data: properties }, { data: contacts }] = await Promise.all([
+    supabase.from("properties").select("id, title").in("id", propertyIds),
+    supabase
+      .from("contacts")
+      .select("id, first_name, last_name")
+      .in("id", contactIds),
+  ]);
+
+  const propertyById = new Map((properties ?? []).map((p) => [p.id, p.title]));
+  const contactById = new Map(
+    (contacts ?? []).map((c) => [c.id, `${c.first_name} ${c.last_name}`]),
+  );
+
+  return data.map((a) => ({
+    id: a.id,
+    title:
+      [
+        propertyById.get(a.property_id),
+        contactById.get(a.primary_owner_contact_id),
+      ]
+        .filter(Boolean)
+        .join(" — ") || "Captación",
+  }));
+}
+
 export async function getAcquisition(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase

@@ -18,6 +18,11 @@ export type CalendarEvent = {
   location: string | null;
   meeting_url: string | null;
   source: "crm" | "google_calendar";
+  contact_id: string | null;
+  property_id: string | null;
+  acquisition_id: string | null;
+  search_id: string | null;
+  deal_id: string | null;
   link: EngagementLink | null;
 };
 
