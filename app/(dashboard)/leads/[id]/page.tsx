@@ -70,7 +70,7 @@ export default async function LeadDetailPage({
   return (
     <div className="max-w-3xl space-y-6">
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-start gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">
             {lead.first_name} {lead.last_name ?? ""}
           </h1>

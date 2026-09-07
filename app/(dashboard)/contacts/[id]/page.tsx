@@ -124,7 +124,7 @@ export default async function ContactDetailPage({
       {/* IDENTIDAD */}
       <div className="space-y-3">
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">
               {contact.first_name} {contact.last_name}
             </h1>

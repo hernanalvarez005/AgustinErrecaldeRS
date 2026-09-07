@@ -47,31 +47,36 @@ function labelForYmd(ymd: string, options: Intl.DateTimeFormatOptions) {
 
 function EventRow({ event }: { event: CalendarEvent }) {
   return (
-    <li className="flex items-start gap-3 rounded-md border p-2 text-sm">
-      <span className="text-muted-foreground w-12 shrink-0 tabular-nums">
-        {eventTime(event.starts_at)}
-      </span>
-      <div className="min-w-0 flex-1">
-        <Link
-          href={`/calendar/${event.id}/edit`}
-          className="font-medium hover:underline"
-        >
-          {ACTIVITY_TYPE_LABELS[event.type]}
-        </Link>
-        {event.link ? (
-          <span className="text-muted-foreground"> · {event.link.label}</span>
-        ) : null}
-        {event.status !== "scheduled" ? (
-          <StatusBadge tone={activityStatusTone(event.status)} className="ml-2">
-            {CALENDAR_EVENT_STATUS_LABELS[event.status]}
-          </StatusBadge>
-        ) : null}
-        {event.description ? (
-          <p className="text-muted-foreground">{event.description}</p>
-        ) : null}
-        {event.location ? (
-          <p className="text-muted-foreground">📍 {event.location}</p>
-        ) : null}
+    <li className="flex flex-col gap-2 rounded-md border p-2 text-sm sm:flex-row sm:items-start sm:gap-3">
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <span className="text-muted-foreground w-12 shrink-0 tabular-nums">
+          {eventTime(event.starts_at)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <Link
+            href={`/calendar/${event.id}/edit`}
+            className="font-medium hover:underline"
+          >
+            {ACTIVITY_TYPE_LABELS[event.type]}
+          </Link>
+          {event.link ? (
+            <span className="text-muted-foreground"> · {event.link.label}</span>
+          ) : null}
+          {event.status !== "scheduled" ? (
+            <StatusBadge
+              tone={activityStatusTone(event.status)}
+              className="ml-2"
+            >
+              {CALENDAR_EVENT_STATUS_LABELS[event.status]}
+            </StatusBadge>
+          ) : null}
+          {event.description ? (
+            <p className="text-muted-foreground">{event.description}</p>
+          ) : null}
+          {event.location ? (
+            <p className="text-muted-foreground">📍 {event.location}</p>
+          ) : null}
+        </div>
       </div>
       {event.status === "scheduled" ? (
         <div className="flex shrink-0 gap-1">

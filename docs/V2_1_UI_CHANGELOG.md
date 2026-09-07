@@ -632,3 +632,95 @@ el embudo: "Nuevo" mostró "100% · 2" y "Captada" "50% · 1", barras en azul
 primary. Sin errores de consola más allá del artefacto de HMR ya
 documentado. Los 13 registros de prueba (6 leads, 3 propiedades, 1
 contacto, 3 captaciones) se borraron y se confirmó vacío después.
+
+## Bloque UI-8 — Mobile
+
+Auditoría real a 375px (spec punto 84) contra `localhost:3000` con datos
+sembrados a propósito (nombres largos, direcciones largas, título de
+propiedad largo) sobre las pantallas nombradas en el punto 78: Hoy, ficha
+cliente, ficha propiedad, Agenda (día/mes), Captaciones (Kanban/tabla) y
+las 6 listas (`/properties`, `/contacts`, `/leads`, `/searches`,
+`/acquisitions`, `/deals`). Verificación de overflow horizontal real vía
+`document.documentElement.scrollWidth` vs. `clientWidth` en cada pantalla,
+no solo inspección visual.
+
+**Bugs reales encontrados y corregidos (3):**
+
+1. **Ícono de editar flotando en medio de un título largo envuelto.**
+   `contacts/[id]`, `properties/[id]`, `leads/[id]`, `searches/[id]`: el
+   `<h1>` del título y el botón de lápiz vivían en un
+   `flex items-center gap-2` — con un título corto esto centra el ícono
+   bien, pero con un título de 3-4 líneas (nombres largos, títulos de
+   propiedad largos) el ícono queda centrado respecto a _todo el bloque
+   envuelto_, flotando en el medio, visualmente desconectado de cualquier
+   línea. Corregido a `items-start` en los 4 archivos — el ícono queda
+   alineado arriba, junto a la primera línea, sea cual sea la altura del
+   título.
+2. **Botón "Agendar visita" comprimiendo el título de la propiedad.**
+   El contenedor externo del header de `properties/[id]`
+   (`flex items-start justify-between gap-4`, sin `flex-wrap`) forzaba al
+   bloque del título a compartir la fila con el botón incluso en mobile,
+   angostando el título a la mitad del ancho disponible y agravando el bug
+   #1. Corregido con `flex-wrap` — el botón cae a su propia línea debajo
+   del título en pantallas angostas.
+3. **Acciones de un evento de agenda apretando el contenido a una columna
+   angosta.** `EventRow` en `/calendar` ponía hora + contenido + botones de
+   acción en una sola fila sin wrap; los botones (`shrink-0`) nunca cedían
+   espacio, así que el contenido (con nombre de cliente + ubicación) se
+   comprimía a ~140px de ancho y se envolvía en 5-6 líneas muy angostas.
+   Reestructurado a `flex-col` (hora+contenido arriba, acciones debajo) en
+   mobile y `sm:flex-row` (todo en una fila, como antes) desde el
+   breakpoint `sm` en adelante — mismo patrón responsive ya usado en otras
+   partes de la V2.1.
+4. **Overflow horizontal real de página en 6 listados.** El header de
+   `/acquisitions`, `/deals`, `/properties`, `/contacts`, `/leads` y
+   `/searches` (`flex items-center justify-between`, sin `flex-wrap`)
+   desbordaba la página en mobile cuando había 2-3 botones junto al título
+   — confirmado con `scrollWidth` 463px en un viewport de 375px en
+   `/acquisitions` (3 botones: "Ver tabla", "+ Captación rápida",
+   "+ Captación"). Corregido agregando `flex-wrap gap-3` a los 6 headers —
+   mismo patrón que ya usaban `/calendar` y `/dashboard` desde sus propios
+   Bloques (UI-2 y UI-7 respectivamente), que por eso no tenían este bug.
+
+**Revisado y confirmado sin cambios necesarios:**
+
+- Grilla de mes del calendario (`month-grid.tsx`): usa
+  `min-w-[840px]` dentro de un contenedor `overflow-x-auto` — en mobile
+  esto produce scroll horizontal _contenido_ (confirmado que no desborda
+  la página), un patrón deliberado y común para calendarios de mes. No se
+  reconstruyó como lista/tarjetas porque el mismo `/calendar` ya ofrece
+  vistas "Semana"/"Día" mucho más aptas para mobile a un toque de
+  distancia — construir una tercera representación solo para mes en mobile
+  sería la reconstrucción que la regla 1 de la spec pide evitar.
+- Kanban de captaciones/operaciones: mismo criterio, columnas de
+  `w-64 shrink-0` con scroll horizontal contenido — ya revisado y aceptado
+  en Bloque UI-5, sin cambios nuevos necesarios acá.
+- Fichas de cliente/propiedad (el resto de sus secciones —
+  Necesidad/Actividad comercial/Datos personales, Información técnica,
+  etc.) y `/today`: sin overflow ni problemas de wrap encontrados con los
+  datos de prueba (deliberadamente largos) sembrados para este Bloque.
+
+**Componentes nuevos:** ninguno.
+
+**Componentes eliminados:** ninguno.
+
+**Pantallas modificadas:** `contacts/[id]`, `properties/[id]`,
+`leads/[id]`, `searches/[id]`, `/calendar`, `/acquisitions`, `/deals`,
+`/properties`, `/contacts`, `/leads`, `/searches` (10 archivos).
+
+**Responsive:** este Bloque _es_ la verificación responsive — ver arriba.
+
+**Charts:** no aplica.
+
+**Deuda pendiente / seguimiento:** ninguna nueva — los 3 bugs reales
+encontrados se corrigieron en este mismo Bloque.
+
+**Verificación:** `npm run typecheck`, `npm run lint`, `npm run build` y
+`npm run format` sin errores. Auditoría en vivo a 375px contra
+`localhost:3000` con datos sembrados a propósito extensos (nombre de
+cliente de 2 palabras + apellido compuesto, dirección larga, título de
+propiedad de 9 palabras) sobre las 11+ pantallas nombradas arriba, cada una
+confirmada sin overflow horizontal de página vía
+`scrollWidth === clientWidth` (no solo revisión visual) antes y después de
+cada fix. Los 13 registros de prueba se borraron y se confirmó vacío
+después.

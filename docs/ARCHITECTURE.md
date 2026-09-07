@@ -547,3 +547,33 @@ localmente (optimistic UI, formularios no controlados con reset, etc.) deja
 de ser seguro en el momento en que esa prop empieza a poder cambiar en
 caliente — hay que decidir explícitamente cómo re-sincronizar, nunca asumir
 que "la prop nunca cambia" solo porque no cambiaba hasta ahora.
+
+## Gotcha real encontrado (mobile): `items-center` en una fila con un título que puede envolver
+
+Encontrado auditando `contacts/[id]`, `properties/[id]`, `leads/[id]` y
+`searches/[id]` a 375px (V2.1 bloque UI-8) con nombres/títulos
+deliberadamente largos: el patrón repetido en las 4 fichas era un
+`<h1>` + botón de editar dentro de `<div className="flex items-center
+gap-2">`. Con texto corto esto centra el ícono contra la única línea del
+título — se ve bien, y así pasó desapercibido durante los Bloques UI-4 a
+UI-7. Con un título que envuelve a 3-4 líneas (nombre largo, dirección
+larga), `items-center` centra el ícono contra la altura de _todo el bloque
+envuelto_, no contra ninguna línea en particular — el ícono queda flotando
+en el medio, visualmente desconectado del texto.
+
+Mismo problema, otra forma: el header de `properties/[id]` ponía el
+bloque de título y el botón "Agendar visita" en un `flex ... justify-between`
+sin `flex-wrap` — en mobile eso angosta el título a la mitad del ancho
+disponible para hacerle lugar al botón en la misma fila, lo que fuerza
+_más_ líneas de las que el título necesitaría con el ancho completo,
+agravando el problema anterior.
+
+Regla general: en cualquier fila `flex` que combine un elemento de texto
+que puede envolver a N líneas (título largo, nombre largo) con un ícono o
+botón de acción al lado, usar `items-start` en vez de `items-center` — un
+ícono levemente descentrado en el caso de una sola línea es un defecto
+mucho menor que un ícono flotando sin relación visual clara cuando el
+texto envuelve. Y si ese mismo bloque de título comparte fila con un botón
+de acción _externo_ (no el ícono inline, sino algo como "Agendar visita"),
+esa fila necesita `flex-wrap` para que el botón cambie de línea en mobile
+en vez de angostar el título.
