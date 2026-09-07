@@ -70,18 +70,18 @@ function DealCard({ deal }: { deal: KanbanDeal }) {
             }
           : undefined
       }
-      className={`bg-card space-y-1 rounded-lg border p-3 text-sm shadow-sm ${isDragging ? "opacity-50" : ""}`}
+      className={`bg-card space-y-1 rounded-lg border p-3 text-sm ${isDragging ? "opacity-50" : ""}`}
     >
       <Link href={`/deals/${deal.id}`} className="font-medium hover:underline">
         {deal.property?.title ?? "Propiedad sin título"}
       </Link>
       <p className="text-muted-foreground">
         {deal.buyer ? `${deal.buyer.first_name} ${deal.buyer.last_name}` : "—"}
+        {price ? ` · ${price}` : ""}
       </p>
-      {price ? <p className="text-muted-foreground">{price}</p> : null}
       {deal.next_action_at ? (
         <p className="text-muted-foreground">
-          Próxima acción: {formatDate(deal.next_action_at)}
+          Próxima · {formatDate(deal.next_action_at)}
         </p>
       ) : null}
     </div>
@@ -119,6 +119,16 @@ function KanbanColumn({
 
 export function KanbanBoard({ deals }: { deals: KanbanDeal[] }) {
   const [items, setItems] = useState(deals);
+  // Same fix as components/acquisitions/kanban-board.tsx: `deals` is now a
+  // live, filterable prop (Bloque UI-5's DealsBoard), so the local copy
+  // needs to re-sync when it changes. Adjusted during render (React's own
+  // pattern for this), not in a useEffect — see that file's comment for the
+  // full rationale.
+  const [prevDeals, setPrevDeals] = useState(deals);
+  if (deals !== prevDeals) {
+    setPrevDeals(deals);
+    setItems(deals);
+  }
   const [, startTransition] = useTransition();
   const sensors = useSensors(useSensor(PointerSensor, POINTER_SENSOR_OPTIONS));
 

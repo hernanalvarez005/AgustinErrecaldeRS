@@ -1,26 +1,10 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
-import { KanbanBoard } from "@/components/deals/kanban-board";
-import { Badge } from "@/components/ui/badge";
+import { DealsBoard } from "@/components/deals/deals-board";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { requireMembership } from "@/lib/auth/session";
 import { listDeals } from "@/lib/data/deals";
-import { formatDate } from "@/lib/format";
-import { DEAL_STATUS_LABELS } from "@/lib/validations/deal";
-
-function formatPrice(value: number | null, currency: "ARS" | "USD" | null) {
-  if (!value || !currency) return "—";
-  return `${currency} ${value.toLocaleString("es-AR")}`;
-}
 
 export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
   const params = await searchParams;
@@ -68,58 +52,8 @@ export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
             Nueva operación
           </Button>
         </div>
-      ) : view === "kanban" ? (
-        <KanbanBoard deals={deals} />
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Propiedad</TableHead>
-                <TableHead>Comprador</TableHead>
-                <TableHead>Vendedor</TableHead>
-                <TableHead>Precio</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Próxima acción</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {deals.map((d) => (
-                <TableRow key={d.id}>
-                  <TableCell className="font-medium">
-                    <Link href={`/deals/${d.id}`} className="hover:underline">
-                      {d.property?.title ?? "—"}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {d.buyer
-                      ? `${d.buyer.first_name} ${d.buyer.last_name}`
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {d.seller
-                      ? `${d.seller.first_name} ${d.seller.last_name}`
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {formatPrice(
-                      d.agreed_price ?? d.offer_price ?? d.asking_price,
-                      d.currency,
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {DEAL_STATUS_LABELS[d.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {formatDate(d.next_action_at) ?? "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <DealsBoard deals={deals} view={view} />
       )}
     </div>
   );

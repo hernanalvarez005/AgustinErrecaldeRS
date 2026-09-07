@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { updateAcquisitionStatus } from "@/app/(dashboard)/acquisitions/actions";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { formatDate } from "@/lib/format";
 import {
   ACQUISITION_KANBAN_COLUMNS,
@@ -67,7 +68,7 @@ function AcquisitionCard({ acquisition }: { acquisition: KanbanAcquisition }) {
             }
           : undefined
       }
-      className={`bg-card space-y-1 rounded-lg border p-3 text-sm shadow-sm ${isDragging ? "opacity-50" : ""}`}
+      className={`bg-card space-y-1 rounded-lg border p-3 text-sm ${isDragging ? "opacity-50" : ""}`}
     >
       <Link
         href={`/acquisitions/${acquisition.id}`}
@@ -79,28 +80,29 @@ function AcquisitionCard({ acquisition }: { acquisition: KanbanAcquisition }) {
         {acquisition.owner
           ? `${acquisition.owner.first_name} ${acquisition.owner.last_name}`
           : "—"}
+        {acquisition.estimated_value
+          ? ` · Est. ${acquisition.estimated_value.toLocaleString("es-AR")}`
+          : ""}
       </p>
-      {acquisition.estimated_value ? (
+      {acquisition.last_interaction_at || acquisition.next_action_at ? (
         <p className="text-muted-foreground">
-          Est. {acquisition.estimated_value.toLocaleString("es-AR")}
-        </p>
-      ) : null}
-      {acquisition.last_interaction_at ? (
-        <p className="text-muted-foreground">
-          Último contacto: {formatDate(acquisition.last_interaction_at)}
-        </p>
-      ) : null}
-      {acquisition.next_action_at ? (
-        <p className="text-muted-foreground">
-          Próxima acción: {formatDate(acquisition.next_action_at)}
+          {acquisition.last_interaction_at
+            ? `Último · ${formatDate(acquisition.last_interaction_at)}`
+            : ""}
+          {acquisition.last_interaction_at && acquisition.next_action_at
+            ? " · "
+            : ""}
+          {acquisition.next_action_at
+            ? `Próxima · ${formatDate(acquisition.next_action_at)}`
+            : ""}
         </p>
       ) : null}
       {acquisition.pending_tasks_count > 0 ? (
-        <p className="text-muted-foreground">
+        <StatusBadge tone="warning">
           {acquisition.pending_tasks_count === 1
             ? "1 pendiente"
             : `${acquisition.pending_tasks_count} pendientes`}
-        </p>
+        </StatusBadge>
       ) : null}
     </div>
   );
@@ -145,6 +147,23 @@ export function KanbanBoard({
   acquisitions: KanbanAcquisition[];
 }) {
   const [items, setItems] = useState(acquisitions);
+  // `acquisitions` is now a live, filterable prop (Bloque UI-5's
+  // AcquisitionsBoard re-renders this with a new array on every search/
+  // status change) — `useState`'s initial value is only read on mount, so
+  // without a resync the board would keep showing whatever was filtered in
+  // at mount time forever. React's own recommended fix for "adjust state
+  // when a prop changes" is a conditional setState *during render* (not in
+  // a useEffect, which the React Compiler's react-hooks/set-state-in-effect
+  // rule flags as cascading-render-prone — see
+  // https://react.dev/learn/you-might-not-need-an-effect). Doesn't fight
+  // the drag-and-drop optimistic update below: a drag never changes the
+  // `acquisitions` prop's identity (only AcquisitionsBoard's own filter
+  // state does), so this only fires on an actual filter change.
+  const [prevAcquisitions, setPrevAcquisitions] = useState(acquisitions);
+  if (acquisitions !== prevAcquisitions) {
+    setPrevAcquisitions(acquisitions);
+    setItems(acquisitions);
+  }
   const [, startTransition] = useTransition();
   // Without an activation constraint, PointerSensor treats a plain click as
   // a zero-distance drag and swallows the click event — the card's <Link>

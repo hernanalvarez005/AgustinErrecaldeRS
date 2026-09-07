@@ -504,3 +504,46 @@ búsqueda válida, en vez de forzar una limpieza síncrona en cada tecleo
 corto. Mismo criterio que el gotcha de `Date.now()`: dejar que el lint del
 compilador de React señale un patrón real (setState síncrono en efecto
 causa renders en cascada) en vez de suprimirlo.
+
+## Gotcha real encontrado: copia local de estado que ignora cambios de prop
+
+Encontrado en V2.1 bloque UI-5, en `components/acquisitions/kanban-board.tsx`
+y `components/deals/kanban-board.tsx`: ambos boards guardan su propio
+`useState(acquisitions)`/`useState(deals)` para poder mover una tarjeta de
+columna de forma optimista (antes de que el Server Action confirme) sin
+esperar un round-trip. Hasta el bloque UI-5 esto nunca fue un problema
+porque `acquisitions`/`deals` era una prop **estática** — venía de un
+Server Component y no cambiaba después del mount. Al agregar el filtro de
+búsqueda (un componente cliente padre, `AcquisitionsBoard`/`DealsBoard`,
+que recalcula el array filtrado y se lo pasa como prop), esa prop pasó a
+ser reactiva — pero `useState` solo lee su argumento inicial en el primer
+render, nunca más. Resultado real: la tabla (que renderiza el array
+filtrado directo, sin copia local) se actualizaba al tipear en el buscador;
+el Kanban, no — seguía mostrando lo que había en pantalla al montar.
+
+El primer intento de fix (`useEffect(() => setItems(acquisitions),
+[acquisitions])`) resolvía el síntoma pero disparaba
+`react-hooks/set-state-in-effect` (el mismo lint del gotcha anterior). El
+fix correcto es el patrón que React documenta para "ajustar estado cuando
+cambia una prop" (https://react.dev/learn/you-might-not-need-an-effect):
+guardar el valor anterior en un segundo `useState` y comparar durante el
+render, no en un efecto:
+
+```tsx
+const [items, setItems] = useState(acquisitions);
+const [prevAcquisitions, setPrevAcquisitions] = useState(acquisitions);
+if (acquisitions !== prevAcquisitions) {
+  setPrevAcquisitions(acquisitions);
+  setItems(acquisitions);
+}
+```
+
+Llamar `setState` condicionalmente durante el render (no en un handler ni
+en un efecto) es un patrón sancionado por React — bail out inmediato con
+un re-render antes de pintar, sin frame visible de por medio — y no
+dispara la regla del compilador. Regla general: cualquier componente que
+guarde una copia local de una prop en `useState` para poder mutarla
+localmente (optimistic UI, formularios no controlados con reset, etc.) deja
+de ser seguro en el momento en que esa prop empieza a poder cambiar en
+caliente — hay que decidir explícitamente cómo re-sincronizar, nunca asumir
+que "la prop nunca cambia" solo porque no cambiaba hasta ahora.

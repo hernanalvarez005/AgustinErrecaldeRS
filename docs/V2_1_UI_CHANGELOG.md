@@ -360,3 +360,106 @@ línea por línea), coincidencia del 100% mostrada correctamente en
 (primary), y en los listados de `/properties`. Sin errores de consola más
 allá del artefacto ya documentado de HMR del dev server. Los 7 registros de
 prueba se borraron y se confirmó vacío después.
+
+## Bloque UI-5 — Pipelines
+
+**Qué cambió:**
+
+- [components/acquisitions/acquisitions-board.tsx](../components/acquisitions/acquisitions-board.tsx)
+  y [components/deals/deals-board.tsx](../components/deals/deals-board.tsx)
+  (nuevos, un componente cliente por entidad): toolbar de filtro (spec punto 50) — búsqueda por propiedad/propietario (o comprador/vendedor) siempre
+  visible, select de estado solo en vista tabla (en Kanban el estado ya está
+  representado por la columna), "Limpiar filtros". Filtra en memoria, sin
+  round-trip al servidor — `listAcquisitions`/`listDeals` ya cargan todas
+  las filas de la organización sin paginar, y `acquisition_overview`/
+  `deal_overview` no traen el título de la propiedad ni el nombre del
+  propietario aplanados (confirmado leyendo el SQL de la vista), así que un
+  filtro `ilike` server-side habría exigido tocar el schema — innecesario
+  cuando el array ya está completo en memoria. `page.tsx` de ambas rutas se
+  simplifica: ya no arma la tabla inline, sólo pasa los datos al nuevo board.
+- Tarjetas de Kanban (`components/acquisitions/kanban-board.tsx`,
+  `components/deals/kanban-board.tsx`): sacan `shadow-sm` (regla "borde >
+  sombra" de Bloque UI-1/spec punto 20); las líneas de "último contacto" y
+  "próxima acción" se combinan en una sola línea compacta; en captaciones,
+  la cuenta de pendientes pasa de texto plano a un `StatusBadge` (`warning`).
+- `StatusBadge` conectado también en `/acquisitions/[id]` y `/deals/[id]`
+  (estado del header, prioridad de tareas) — mismo patrón que Bloques UI-3
+  y UI-4, no estaban cubiertos todavía.
+- Botón "Agendar visita" ya venía primary desde UI-4; en este Bloque los
+  botones "Captación"/"Operación" (crear) del header de lista ya eran
+  primary desde antes — sin cambios ahí, se verificó que ya cumplían la
+  jerarquía.
+
+**Componentes nuevos:** `AcquisitionsBoard`, `DealsBoard`.
+
+**Componentes eliminados:** ninguno — la tabla inline que vivía en
+`acquisitions/page.tsx`/`deals/page.tsx` se movió a los boards nuevos, no
+se eliminó funcionalidad.
+
+**Bug real encontrado y corregido en este Bloque:** al agregar el filtro,
+el Kanban dejó de reaccionar a los cambios de búsqueda/estado — la tabla sí
+se actualizaba, el Kanban no. Causa: `KanbanBoard` guarda su propia copia
+local del array (`useState(acquisitions)`) para soportar el
+drag-and-drop optimista, y `useState` solo lee su valor inicial en el
+primer render — antes de este Bloque nunca importaba, porque
+`acquisitions`/`deals` eran una prop estática de un Server Component que
+jamás cambiaba después del mount. Al volverse una prop reactiva (filtrada
+por un componente cliente padre), esa copia local quedó pegada a los datos
+del primer render para siempre. Primer intento de fix
+(`useEffect(() => setItems(acquisitions), [acquisitions])`) funcionaba pero
+disparó `react-hooks/set-state-in-effect` (mismo lint del Bloque UI-2) —
+corregido con el patrón que React documenta para "ajustar estado cuando
+cambia una prop": comparar contra un valor previo guardado en estado y
+llamar `setState` condicionalmente _durante el render_, no en un efecto
+(ver el comentario en ambos `kanban-board.tsx`). Verificado explícitamente
+que el fix no rompe el drag-and-drop: se arrastró una tarjeta entre
+columnas después del fix y el cambio de fase se guardó correctamente.
+
+**Decisiones visuales:**
+
+- El filtro de estado no aparece en la vista Kanban — ahí la columna ya
+  cumple esa función; mostrarlo igual sería redundante y podría confundir
+  (filtrar por una fase mientras se ven todas las columnas).
+- No se creó un componente `FilterBar` genérico compartido entre
+  captaciones y operaciones pese a la similitud — los campos de búsqueda
+  son distintos (propietario vs. comprador/vendedor) y cada board ya es
+  pequeño; una abstracción compartida en este punto sería la
+  sobreabstracción que pide evitar el punto 91.
+- No se tocaron las páginas `/acquisitions/[id]` ni `/deals/[id]` más allá
+  de conectar `StatusBadge` — la reestructuración de jerarquía tipo Bloque
+  UI-4 no está en el alcance nombrado de este Bloque (la spec no las lista
+  como "ficha" en ningún punto 36-45); queda anotado como posible Bloque
+  futuro si se pide.
+
+**Pantallas modificadas:** `/acquisitions`, `/deals`, `/acquisitions/[id]`,
+`/deals/[id]`.
+
+**Responsive:** sin verificación dedicada a 375px — el Kanban ya usaba
+`overflow-x-auto` desde V2 (scroll horizontal de columnas en mobile, no
+compresión), sin cambios a esa mecánica en este Bloque.
+
+**Charts:** no aplica.
+
+**Deuda pendiente / seguimiento:**
+
+- Fichas de captación/operación (`/acquisitions/[id]`, `/deals/[id]`)
+  siguen siendo una pila plana de cards, igual que ficha cliente/propiedad
+  antes de Bloque UI-4 — no se tocó su jerarquía en este Bloque por estar
+  fuera del alcance nombrado. Candidato para un Bloque futuro si se pide.
+- La búsqueda del filtro de captaciones/operaciones no cubre origen ni
+  fase por texto (solo propiedad/propietario/comprador/vendedor) — ampliar
+  si hace falta.
+
+**Verificación:** `npx next typegen`, `npm run typecheck`, `npm run lint`
+(encontró el bug de `set-state-in-effect` documentado arriba, corregido),
+`npm run build` y `npm run format` sin errores. Se sembraron dos
+captaciones en fases distintas ("Nuevo" y "Captada") con propiedades y
+nombres a propósito distinguibles por texto, verificado en vivo contra
+`localhost:3000`: filtro de búsqueda funcionando en Kanban y en tabla
+(confirmado el bug original — el Kanban no se actualizaba — y confirmado el
+fix), el filtro persiste al cambiar entre vista Kanban/tabla, "Limpiar
+filtros" funciona, `StatusBadge` con tono correcto ("Captada" en verde/
+success), y drag-and-drop entre columnas probado de punta a punta después
+del fix sin regresión. Los 3 registros de prueba (2 propiedades + 1
+contacto, cascadeando a las captaciones) se borraron y se confirmó vacío
+después.

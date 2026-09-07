@@ -6,7 +6,7 @@ import {
   createValuation,
 } from "@/app/(dashboard)/acquisitions/actions";
 import { buildTimeline, Timeline } from "@/components/contacts/timeline";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ import { getAcquisition, getValuations } from "@/lib/data/acquisitions";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { getProperty } from "@/lib/data/properties";
 import { formatDate } from "@/lib/format";
+import { acquisitionStatusTone, taskPriorityTone } from "@/lib/status-tone";
 import {
   ACTIVITY_TYPE_LABELS,
   LOGGABLE_ACTIVITY_TYPES,
@@ -80,7 +81,9 @@ export default async function AcquisitionDetailPage({
           {property?.title ?? "Propiedad sin título"}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge>{ACQUISITION_STATUS_LABELS[acquisition.status]}</Badge>
+          <StatusBadge tone={acquisitionStatusTone(acquisition.status)}>
+            {ACQUISITION_STATUS_LABELS[acquisition.status]}
+          </StatusBadge>
           {acquisition.origin ? (
             <span className="text-muted-foreground text-sm">
               Origen: {CONTACT_SOURCE_LABELS[acquisition.origin]}
@@ -331,12 +334,16 @@ export default async function AcquisitionDetailPage({
                   key={task.id}
                   className="flex items-center justify-between gap-2 text-sm"
                 >
-                  <div>
-                    <span className="font-medium">{task.title}</span>{" "}
-                    <span className="text-muted-foreground">
-                      · {TASK_PRIORITY_LABELS[task.priority]}
-                      {task.due_at ? ` · ${formatDate(task.due_at)}` : ""}
-                    </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-medium">{task.title}</span>
+                    <StatusBadge tone={taskPriorityTone(task.priority)}>
+                      {TASK_PRIORITY_LABELS[task.priority]}
+                    </StatusBadge>
+                    {task.due_at ? (
+                      <span className="text-muted-foreground">
+                        {formatDate(task.due_at)}
+                      </span>
+                    ) : null}
                   </div>
                   <form
                     action={completeTask.bind(

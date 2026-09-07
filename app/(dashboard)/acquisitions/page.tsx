@@ -1,22 +1,10 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
-import { KanbanBoard } from "@/components/acquisitions/kanban-board";
-import { Badge } from "@/components/ui/badge";
+import { AcquisitionsBoard } from "@/components/acquisitions/acquisitions-board";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { requireMembership } from "@/lib/auth/session";
 import { listAcquisitions } from "@/lib/data/acquisitions";
-import { formatDate } from "@/lib/format";
-import { ACQUISITION_STATUS_LABELS } from "@/lib/validations/acquisition";
-import { CONTACT_SOURCE_LABELS } from "@/lib/validations/contact";
 
 export default async function AcquisitionsPage({
   searchParams,
@@ -80,66 +68,8 @@ export default async function AcquisitionsPage({
             Nueva captación
           </Button>
         </div>
-      ) : view === "kanban" ? (
-        <KanbanBoard acquisitions={acquisitions} />
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Propiedad</TableHead>
-                <TableHead>Propietario</TableHead>
-                <TableHead>Origen</TableHead>
-                <TableHead>Valor estimado</TableHead>
-                <TableHead>Fase</TableHead>
-                <TableHead>Último contacto</TableHead>
-                <TableHead>Próxima acción</TableHead>
-                <TableHead>Pendientes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {acquisitions.map((a) => (
-                <TableRow key={a.id}>
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/acquisitions/${a.id}`}
-                      className="hover:underline"
-                    >
-                      {a.property?.title ?? "—"}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {a.owner
-                      ? `${a.owner.first_name} ${a.owner.last_name}`
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {a.origin ? CONTACT_SOURCE_LABELS[a.origin] : "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {a.estimated_value
-                      ? a.estimated_value.toLocaleString("es-AR")
-                      : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {ACQUISITION_STATUS_LABELS[a.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {formatDate(a.last_interaction_at) ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {formatDate(a.next_action_at) ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {a.pending_tasks_count > 0 ? a.pending_tasks_count : "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <AcquisitionsBoard acquisitions={acquisitions} view={view} />
       )}
     </div>
   );
