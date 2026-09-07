@@ -8,6 +8,8 @@ import type {
   RecommendationStatus,
   SearchStatus,
   TaskPriority,
+  VisitInterestLevel,
+  VisitWantsToProceed,
 } from "@/types/database.types";
 
 /**
@@ -194,5 +196,34 @@ export function taskPriorityTone(priority: TaskPriority): StatusTone {
       return "danger";
     default:
       return assertUnreachable(priority);
+  }
+}
+
+export function visitInterestLevelTone(level: VisitInterestLevel): StatusTone {
+  switch (level) {
+    case "very_interested":
+    case "interested":
+      return "success";
+    case "unsure":
+      return "warning";
+    case "discarded":
+      return "danger";
+    default:
+      return assertUnreachable(level);
+  }
+}
+
+export function visitWantsToProceedTone(
+  value: VisitWantsToProceed,
+): StatusTone {
+  switch (value) {
+    case "yes":
+      return "success";
+    case "thinking":
+      return "warning";
+    case "no":
+      return "danger";
+    default:
+      return assertUnreachable(value);
   }
 }

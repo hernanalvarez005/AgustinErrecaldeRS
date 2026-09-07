@@ -49,7 +49,7 @@ export function MonthGrid({
                   href={`/calendar?view=day&date=${ymd}`}
                   className={`flex size-6 items-center justify-center rounded-full text-xs hover:underline ${
                     isToday
-                      ? "bg-foreground text-background font-medium"
+                      ? "bg-primary text-primary-foreground font-medium"
                       : isCurrentMonth
                         ? "text-foreground"
                         : "text-muted-foreground"

@@ -4,14 +4,6 @@ import { useState, useTransition } from "react";
 
 import { finalizeVisit } from "@/app/(dashboard)/calendar/actions";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,6 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import {
   VISIT_INTEREST_LEVEL_LABELS,
@@ -35,9 +35,11 @@ import {
  * "Finalizar visita" (V2 bloque D): a visit-type event's completion
  * action opens this instead of completing immediately — the advisor
  * closes out interest level, price perception, and an optional follow-up
- * task in one modal, matching components/ui/dialog.tsx's first real
- * feature use (previously only used internally by the sidebar/command
- * palette).
+ * task without losing their place on the calendar. A side sheet rather
+ * than a centered dialog since V2.1 (Bloque UI-6, spec point 56 — one of
+ * the drawer candidates it names explicitly): the form has 7 fields, more
+ * than "a confirmation or a small decision" (spec point 57's boundary for
+ * when a dialog is still the right call).
  */
 export function VisitFeedbackDialog({ activityId }: { activityId: string }) {
   const [open, setOpen] = useState(false);
@@ -59,16 +61,19 @@ export function VisitFeedbackDialog({ activityId }: { activityId: string }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" variant="ghost" />}>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger render={<Button size="sm" variant="ghost" />}>
         Finalizar visita
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Finalizar visita</DialogTitle>
-        </DialogHeader>
+      </SheetTrigger>
+      <SheetContent className="overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Finalizar visita</SheetTitle>
+        </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4"
+        >
           {error ? (
             <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm">
               {error}
@@ -158,13 +163,13 @@ export function VisitFeedbackDialog({ activityId }: { activityId: string }) {
             </div>
           </div>
 
-          <DialogFooter>
+          <SheetFooter className="px-0">
             <Button type="submit" disabled={isPending}>
               Guardar y finalizar
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

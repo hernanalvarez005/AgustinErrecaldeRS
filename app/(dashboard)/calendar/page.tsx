@@ -4,6 +4,7 @@ import Link from "next/link";
 import { updateEventStatus } from "@/app/(dashboard)/calendar/actions";
 import { MonthGrid } from "@/components/calendar/month-grid";
 import { VisitFeedbackDialog } from "@/components/activities/visit-feedback-dialog";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireMembership } from "@/lib/auth/session";
@@ -16,6 +17,7 @@ import {
   todayYmdInBusinessTimezone,
   utcIsoToBusinessDateTimeLocal,
 } from "@/lib/date";
+import { activityStatusTone } from "@/lib/status-tone";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/validations/activity";
 import { CALENDAR_EVENT_STATUS_LABELS } from "@/lib/validations/calendar";
 
@@ -60,9 +62,9 @@ function EventRow({ event }: { event: CalendarEvent }) {
           <span className="text-muted-foreground"> · {event.link.label}</span>
         ) : null}
         {event.status !== "scheduled" ? (
-          <Badge variant="secondary" className="ml-2">
+          <StatusBadge tone={activityStatusTone(event.status)} className="ml-2">
             {CALENDAR_EVENT_STATUS_LABELS[event.status]}
-          </Badge>
+          </StatusBadge>
         ) : null}
         {event.description ? (
           <p className="text-muted-foreground">{event.description}</p>

@@ -463,3 +463,78 @@ success), y drag-and-drop entre columnas probado de punta a punta después
 del fix sin regresión. Los 3 registros de prueba (2 propiedades + 1
 contacto, cascadeando a las captaciones) se borraron y se confirmó vacío
 después.
+
+## Bloque UI-6 — Agenda / Tasks
+
+**Qué cambió:**
+
+- [components/activities/visit-feedback-dialog.tsx](../components/activities/visit-feedback-dialog.tsx):
+  "Finalizar visita" pasa de `Dialog` (modal centrado) a `Sheet` (drawer
+  lateral) — spec punto 56, que nombra "Finalizar visita" explícitamente
+  como uno de los casos ideales para drawer. Es además el primer uso real
+  de `components/ui/sheet.tsx` en toda la app (existía desde la base
+  shadcn, sin conectar — mismo hallazgo que `command.tsx` en Bloque UI-2).
+  Mismo formulario, misma lógica (`finalizeVisit`), solo cambia el
+  contenedor — el usuario no pierde el contexto del calendario detrás.
+- [app/(dashboard)/calendar/page.tsx](<../app/(dashboard)/calendar/page.tsx>):
+  el badge de estado de un evento (`Realizado`/`Cancelado`) pasa de
+  `Badge variant="secondary"` a `StatusBadge` con `activityStatusTone`.
+- [components/calendar/month-grid.tsx](../components/calendar/month-grid.tsx):
+  el círculo de "hoy" pasa de `bg-foreground` (gris/negro) a
+  `bg-primary` — mismo criterio que el resto de la V2.1, `primary` para
+  "selección/interacción activa" (spec punto 12).
+- [components/activities/visit-feedback-list.tsx](../components/activities/visit-feedback-list.tsx):
+  nivel de interés y "quiere avanzar" pasan de texto plano concatenado a
+  `StatusBadge` (nuevos helpers `visitInterestLevelTone`/
+  `visitWantsToProceedTone` en `lib/status-tone.ts`); los emoji 👍/👎 pasan
+  a íconos Lucide (`ThumbsUp`/`ThumbsDown`) — spec punto 24, un único set
+  de iconografía, sin emoji como iconografía de producto.
+
+**Componentes nuevos:** ninguno — `Sheet` ya existía (Bloque UI-6 le da su
+primer uso real), `visitInterestLevelTone`/`visitWantsToProceedTone` son
+funciones nuevas en `lib/status-tone.ts`, no componentes.
+
+**Componentes eliminados:** ninguno.
+
+**Decisiones visuales:**
+
+- No se convirtieron los formularios inline de "Nueva tarea"/"Nueva nota"
+  (en las fichas de cliente/propiedad/captación/operación) a drawers, pese
+  a que la spec los nombra como candidatos (punto 56). Son formularios
+  cortos (2-3 campos) ya compactos dentro de su Card — convertirlos habría
+  significado tocar 5-6 archivos ya verificados en Bloques anteriores para
+  una ganancia marginal, mientras que "Finalizar visita" (7 campos, forma
+  la más grande de un quick-action existente) es el caso donde un drawer
+  aporta más que un modal centrado. Queda anotado como posible pulido
+  futuro si se pide explícitamente.
+- El badge de "Hoy" en la vista semana del calendario (`Badge
+variant="secondary"`) no se tocó — no es un estado de negocio con
+  semántica success/warning/danger, es un marcador de "día actual"; forzarlo
+  a `StatusBadge` no aportaría claridad.
+
+**Pantallas modificadas:** `/calendar` (las tres vistas), ficha
+cliente/propiedad en su tab "Visitas" (consumen `VisitFeedbackList`, sin
+cambios propios).
+
+**Responsive:** sin verificación dedicada a 375px — el drawer usa
+`SheetContent` con `w-3/4` en mobile (ya definido por el componente base,
+sin tocar), y el resto de los cambios son de color/ícono, no de layout.
+
+**Charts:** no aplica.
+
+**Deuda pendiente / seguimiento:**
+
+- "Nueva tarea"/"Nueva nota" inline quedan como están (ver decisión
+  arriba) — candidato a drawer si se pide explícitamente más adelante.
+
+**Verificación:** `npx next typegen`, `npm run typecheck`, `npm run lint`,
+`npm run build` y `npm run format` sin errores. Se sembró una visita
+agendada (para probar "Finalizar visita" de punta a punta) y un evento
+cancelado (para el `StatusBadge` de estado), verificado en vivo contra
+`localhost:3000`: el drawer se abre deslizando desde la derecha con
+transición correcta, el formulario completo es usable, "Guardar y
+finalizar" cambia el estado del evento a "Realizado" (confirmado por
+`get_page_text`), y el feedback cargado aparece con los `StatusBadge`
+correctos ("Muy interesado" y "Avanza: Sí" en verde/success) en la ficha de
+la propiedad. Sin errores de consola. Los 4 registros de prueba (contacto,
+propiedad, 2 actividades) se borraron y se confirmó vacío después.
