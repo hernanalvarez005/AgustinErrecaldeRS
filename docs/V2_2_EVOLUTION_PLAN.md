@@ -100,3 +100,33 @@ Cada Bloque sigue el mismo ritmo ya usado en V2/V2.1: implementar →
 (`npx supabase db push`) → verificación en vivo contra el proyecto Supabase
 hosteado real vía Claude Browser → limpieza de datos de prueba → commit →
 push → reporte → confirmación para el siguiente Bloque.
+
+## Estado de avance
+
+- **Bloque 1 (WhatsApp directo)** — ✅ completo. `lib/phone.ts`, botón en
+  `/contacts/[id]`. Commit `cef79a1`.
+- **Bloque 2 (Storage + `attachments`)** — ✅ completo. Migración
+  `20260907150000_attachments.sql` (tabla `attachments` con FKs explícitas
+  `contact_id`/`property_id` nullable + CHECK "exactamente una entidad",
+  bucket privado `attachments`, RLS por `organization_id` en tabla y
+  Storage), `lib/validations/attachment.ts`, `lib/data/attachments.ts`,
+  `lib/actions/attachments.ts` (create/rename/delete/signed URL).
+  Verificado en vivo: aislamiento cross-organización confirmado en los tres
+  vectores (SELECT de tabla, `createSignedUrl`, INSERT a Storage) — un
+  usuario de la organización A recibe "no encontrado"/"RLS policy" al
+  intentar leer o escribir un archivo real de la organización B, aun
+  cuando el objeto sí existe en Storage.
+- **Bloques 3-4 (Archivos en ficha cliente/propiedad)** — ✅ completos.
+  `components/attachments/` (`attachment-upload-form.tsx` con
+  drag-and-drop + validación de tipo/tamaño en cliente + limpieza de
+  huérfanos en Storage si falla el insert de metadata,
+  `attachment-list.tsx` con Ver/Descargar/Renombrar/Eliminar,
+  `attachments-section.tsx` combinando ambos). Montado como sección
+  "Archivos" en `/contacts/[id]` y como tab "Documentación" en
+  `/properties/[id]`. Verificado en vivo: subida, listado, ver (URL
+  firmada 120s), descargar (`Content-Disposition: attachment`), renombrar,
+  eliminar (borra Storage y luego la fila) — y los rechazos de tipo/MIME
+  no coincidente y de tamaño >15MB en el cliente.
+- **Bloque 5 (Auditoría Calendar)** — ✅ completo, ver secciones 5.x
+  arriba.
+- **Bloques 6-9** — pendientes.

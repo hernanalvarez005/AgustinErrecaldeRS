@@ -935,6 +935,40 @@ export interface Database {
         >;
         Relationships: [];
       };
+      attachments: {
+        Row: {
+          id: string;
+          organization_id: string;
+          contact_id: string | null;
+          property_id: string | null;
+          file_name: string;
+          storage_path: string;
+          mime_type: string;
+          file_size: number;
+          category: string | null;
+          description: string | null;
+          uploaded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          contact_id?: string | null;
+          property_id?: string | null;
+          file_name: string;
+          storage_path: string;
+          mime_type: string;
+          file_size: number;
+          category?: string | null;
+          description?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["attachments"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       contact_overview: {

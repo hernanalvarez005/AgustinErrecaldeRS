@@ -8,6 +8,7 @@ import {
   removeOwner,
 } from "@/app/(dashboard)/properties/actions";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { AttachmentsSection } from "@/components/attachments/attachments-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,7 @@ import {
   createRecommendation,
   updateRecommendationStatus,
 } from "@/lib/actions/recommendations";
+import { listAttachments } from "@/lib/data/attachments";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { getSearchMatchesForProperty } from "@/lib/data/matching";
 import { getOffersForProperty } from "@/lib/data/offers";
@@ -71,6 +73,7 @@ import {
   RECOMMENDATION_STATUSES,
 } from "@/lib/validations/recommendation";
 import { TASK_PRIORITY_LABELS, TASK_PRIORITIES } from "@/lib/validations/task";
+import { PROPERTY_ATTACHMENT_CATEGORIES } from "@/lib/validations/attachment";
 
 function formatPrice(price: number | null, currency: string | null) {
   if (price === null || currency === null) return null;
@@ -97,6 +100,7 @@ export default async function PropertyDetailPage({
     visitFeedback,
     offers,
     recommendations,
+    attachments,
   ] = await Promise.all([
     getPropertyOwners(id),
     listContactOptions(membership.organization.id),
@@ -108,6 +112,7 @@ export default async function PropertyDetailPage({
     getVisitFeedbackForProperty(id),
     getOffersForProperty(id),
     getRecommendationsForProperty(id),
+    listAttachments({ propertyId: id }),
   ]);
 
   const pendingTasks = tasks.filter(
@@ -258,6 +263,7 @@ export default async function PropertyDetailPage({
           <TabsTrigger value="visitas">Visitas</TabsTrigger>
           <TabsTrigger value="ofertas">Ofertas</TabsTrigger>
           <TabsTrigger value="actividad">Actividad</TabsTrigger>
+          <TabsTrigger value="documentacion">Documentación</TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumen" className="space-y-6 pt-4">
@@ -789,6 +795,19 @@ export default async function PropertyDetailPage({
             </CardHeader>
             <CardContent>
               <Timeline entries={timeline} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="documentacion" className="pt-4">
+          <Card>
+            <CardContent>
+              <AttachmentsSection
+                attachments={attachments}
+                entityRef={{ propertyId: property.id }}
+                organizationId={membership.organization.id}
+                categories={PROPERTY_ATTACHMENT_CATEGORIES}
+              />
             </CardContent>
           </Card>
         </TabsContent>

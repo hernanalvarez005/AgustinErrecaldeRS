@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { Toaster } from "@/components/ui/sonner";
 import {
   getAuthUser,
   getCurrentMembership,
@@ -33,6 +34,7 @@ export default async function DashboardLayout({
         <AppHeader displayName={displayName} />
         <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">{children}</div>
       </SidebarInset>
+      <Toaster />
     </SidebarProvider>
   );
 }

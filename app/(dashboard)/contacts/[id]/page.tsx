@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { StatusBadge } from "@/components/shared/status-badge";
+import { AttachmentsSection } from "@/components/attachments/attachments-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,7 @@ import {
   createTask,
   logActivity,
 } from "@/lib/actions/engagement";
+import { listAttachments } from "@/lib/data/attachments";
 import { getContact, getContactRoles } from "@/lib/data/contacts";
 import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { getRecommendationsForContact } from "@/lib/data/recommendations";
@@ -41,6 +43,7 @@ import {
   LOGGABLE_ACTIVITY_TYPES,
 } from "@/lib/validations/activity";
 import { CONTACT_ROLE_LABELS } from "@/lib/validations/contact";
+import { CONTACT_ATTACHMENT_CATEGORIES } from "@/lib/validations/attachment";
 import {
   OPERATION_TYPE_LABELS,
   PROPERTY_TYPE_LABELS,
@@ -77,6 +80,7 @@ export default async function ContactDetailPage({
     activities,
     visitFeedback,
     recommendations,
+    attachments,
   ] = await Promise.all([
     getContact(id),
     getContactRoles(id),
@@ -86,6 +90,7 @@ export default async function ContactDetailPage({
     getActivities({ contactId: id }),
     getVisitFeedbackForContact(id),
     getRecommendationsForContact(id),
+    listAttachments({ contactId: id }),
   ]);
 
   if (!contact) notFound();
@@ -514,6 +519,21 @@ export default async function ContactDetailPage({
           </CardHeader>
           <CardContent>
             <Timeline entries={timeline} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ARCHIVOS */}
+      <div className="space-y-2">
+        <p className={GROUP_LABEL_CLASS}>Archivos</p>
+        <Card size="sm">
+          <CardContent>
+            <AttachmentsSection
+              attachments={attachments}
+              entityRef={{ contactId: contact.id }}
+              organizationId={contact.organization_id}
+              categories={CONTACT_ATTACHMENT_CATEGORIES}
+            />
           </CardContent>
         </Card>
       </div>
