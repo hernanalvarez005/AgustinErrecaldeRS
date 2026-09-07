@@ -183,4 +183,46 @@ push → reporte → confirmación para el siguiente Bloque.
   evento ganó los botones Completar/Cancelar y el título volvió a ser
   editable, igual que cualquier actividad creada normalmente. Datos de
   prueba limpiados al final.
-- **Bloques 7 y 9** — pendientes.
+
+- **Bloque 9 (QA + mobile + seguridad)** — ✅ completo. Bloque 7
+  (push/webhook) quedó deliberadamente afuera — la spec lo marca como
+  "solo si es técnicamente conveniente" y el "Sincronizar ahora" manual
+  del Bloque 6 ya cubre la necesidad real sin la complejidad y superficie
+  de seguridad extra de un endpoint de webhook (canal, token, renovación).
+
+  **Bug real encontrado y corregido**: el `TabsList` de seis pestañas en
+  `/properties/[id]` (agregó "Documentación" en el Bloque 4) desbordaba
+  el viewport en mobile (375px) y, como `TabsList` es `inline-flex w-fit`
+  sin wrap ni scroll propio, ese desborde se propagaba hasta `<html>`
+  (`scrollWidth` 445 vs `clientWidth` 375 — verificado con el mismo
+  criterio ya usado en V2.1, `document.documentElement.scrollWidth >
+clientWidth`). Corregido envolviendo ese `TabsList` en un
+  `overflow-x-auto` — mismo patrón que ya usan las tablas anchas — sin
+  tocar el componente `Tabs` compartido.
+
+  **Mobile (375px) verificado en vivo** para todo lo nuevo de V2.2: ficha
+  de contacto (botones de header + sección Archivos, incluida la subida
+  real de un PDF y su fila en la tabla con scroll horizontal contenido),
+  ficha de propiedad (tab Documentación, con el fix de arriba), `/calendar`
+  (badge "Google Calendar" + `Sheet` de Vincular/Convertir, legible y sin
+  overflow), `/settings` (sección Google Calendar). Ninguna otra página
+  tocada en V2.2 mostró desborde horizontal.
+
+  **Regresión**: navegación por Dashboard, Clientes, Propiedades, Leads,
+  Búsquedas, Captaciones, Operaciones, Hoy, Agenda y Configuración sin
+  errores de consola atribuibles a V2.2 — el único warning de React
+  ("Base UI: uncontrolled Select...") se reproduce igual en `/calendar/new`
+  (código V1/V2 sin tocar), confirmando que es preexistente y no una
+  regresión de este trabajo.
+
+  **Seguridad**: `grep` sobre `lib/google/*.ts` y `app/api/google/*`
+  confirma que todo `console.error` de esos archivos loguea solo
+  `error.message` de Postgres/fetch, nunca un token — consistente con el
+  comentario ya existente en `lib/google/oauth.ts` ("nunca loguear
+  tokens"). Aislamiento cross-organización de `attachments` (tabla y
+  Storage) y RLS "solo dueño" de `google_calendar_connections` ya
+  verificados en vivo en los Bloques 2 y 6/8 respectivamente.
+
+V2.2 queda así completa en su alcance real (Bloques 1-6, 8-9); el 7 se
+deja documentado como decisión consciente de no implementar, no como
+pendiente olvidado.

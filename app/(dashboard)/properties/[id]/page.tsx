@@ -257,14 +257,23 @@ export default async function PropertyDetailPage({
       </div>
 
       <Tabs defaultValue="resumen">
-        <TabsList>
-          <TabsTrigger value="resumen">Resumen</TabsTrigger>
-          <TabsTrigger value="interesados">Interesados</TabsTrigger>
-          <TabsTrigger value="visitas">Visitas</TabsTrigger>
-          <TabsTrigger value="ofertas">Ofertas</TabsTrigger>
-          <TabsTrigger value="actividad">Actividad</TabsTrigger>
-          <TabsTrigger value="documentacion">Documentación</TabsTrigger>
-        </TabsList>
+        {/* V2.2 Bloque 9: six triggers no longer fit a 375px viewport (this
+            list was five wide, still tight, until "Documentación" pushed it
+            over) — TabsList is `w-fit`/no-wrap by design, so without this
+            wrapper the overflow bubbles all the way up to the page body
+            (verified: document.documentElement.scrollWidth > clientWidth).
+            Same "scroll inside its own container" fix already used for wide
+            tables, not a change to the shared Tabs component. */}
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="resumen">Resumen</TabsTrigger>
+            <TabsTrigger value="interesados">Interesados</TabsTrigger>
+            <TabsTrigger value="visitas">Visitas</TabsTrigger>
+            <TabsTrigger value="ofertas">Ofertas</TabsTrigger>
+            <TabsTrigger value="actividad">Actividad</TabsTrigger>
+            <TabsTrigger value="documentacion">Documentación</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="resumen" className="space-y-6 pt-4">
           <Card size="sm">
