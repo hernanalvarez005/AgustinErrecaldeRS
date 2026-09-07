@@ -29,6 +29,21 @@ export type FunnelStage = { status: string; label: string; count: number };
 /** Every row this dashboard reads is capped here — a solo advisor's data volume never approaches this, and it keeps every query a single cheap round trip instead of paginating. */
 const FUNNEL_ROW_LIMIT = 2000;
 
+type YmdRange = { startYmd: string | null; endYmdExclusive: string };
+
+/**
+ * Every KPI function below (not the funnels) accepts either a named
+ * `DashboardPeriod` or an already-resolved range — the latter is what
+ * lets the dashboard page (V2.1 Bloque UI-7, "+12% vs período anterior")
+ * call the exact same function again with `getPreviousPeriodYmdRange`'s
+ * output, with zero duplicated query logic.
+ */
+type PeriodInput = DashboardPeriod | YmdRange;
+
+function resolvePeriodRange(period: PeriodInput): YmdRange {
+  return typeof period === "string" ? getPeriodYmdRange(period) : period;
+}
+
 function bucketByStatus<S extends string>(
   rows: { status: S }[],
   order: readonly S[],
@@ -62,9 +77,9 @@ export type LeadsKpi = {
  */
 export async function getLeadsKpi(
   organizationId: string,
-  period: DashboardPeriod,
+  period: PeriodInput,
 ): Promise<LeadsKpi> {
-  const { startYmd, endYmdExclusive } = getPeriodYmdRange(period);
+  const { startYmd, endYmdExclusive } = resolvePeriodRange(period);
   const { startUtc, endUtc } = getBusinessRangeBoundsUtc(
     startYmd ?? "1900-01-01",
     endYmdExclusive,
@@ -123,9 +138,9 @@ export async function getLeadsKpi(
 /** Property/acquisition visits (activities) that happened or are scheduled within the period. */
 export async function getVisitsKpi(
   organizationId: string,
-  period: DashboardPeriod,
+  period: PeriodInput,
 ): Promise<number> {
-  const { startYmd, endYmdExclusive } = getPeriodYmdRange(period);
+  const { startYmd, endYmdExclusive } = resolvePeriodRange(period);
   const { startUtc, endUtc } = getBusinessRangeBoundsUtc(
     startYmd ?? "1900-01-01",
     endYmdExclusive,
@@ -148,9 +163,9 @@ export async function getVisitsKpi(
 /** Valuations recorded within the period, by their own valuation_date (a native `date`) — "Tasaciones" (V2 bloque H). */
 export async function getValuationsKpi(
   organizationId: string,
-  period: DashboardPeriod,
+  period: PeriodInput,
 ): Promise<number> {
-  const { startYmd, endYmdExclusive } = getPeriodYmdRange(period);
+  const { startYmd, endYmdExclusive } = resolvePeriodRange(period);
   const supabase = await createClient();
 
   let query = supabase
@@ -183,9 +198,9 @@ const RESERVED_OR_LATER_DEAL_STATUSES = [
 
 export async function getReservationsKpi(
   organizationId: string,
-  period: DashboardPeriod,
+  period: PeriodInput,
 ): Promise<number> {
-  const { startYmd, endYmdExclusive } = getPeriodYmdRange(period);
+  const { startYmd, endYmdExclusive } = resolvePeriodRange(period);
   const supabase = await createClient();
 
   let query = supabase
@@ -210,11 +225,11 @@ export type ClosingsKpi = {
 /** Deals that actually closed within the period, by their real closing_date (a native `date`, not created_at — see docs/ARCHITECTURE.md on why closings/commission use milestone dates instead of a creation-date proxy). */
 export async function getClosingsKpi(
   organizationId: string,
-  period: DashboardPeriod,
+  period: PeriodInput,
 ): Promise<ClosingsKpi> {
   // closing_date is a native Postgres `date` — compare directly against
   // "YYYY-MM-DD" strings, no need to round-trip through a UTC instant.
-  const { startYmd, endYmdExclusive } = getPeriodYmdRange(period);
+  const { startYmd, endYmdExclusive } = resolvePeriodRange(period);
   const supabase = await createClient();
 
   let query = supabase

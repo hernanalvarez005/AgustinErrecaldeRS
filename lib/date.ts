@@ -155,6 +155,37 @@ export const DASHBOARD_PERIOD_LABELS: Record<DashboardPeriod, string> = {
   all: "Todo",
 };
 
+function firstOfMonth(y: number, m: number): string {
+  return `${y}-${String(m).padStart(2, "0")}-01`;
+}
+
+function addMonths(y: number, m: number, delta: number): [number, number] {
+  let ny = y;
+  let nm = m + delta;
+  while (nm < 1) {
+    nm += 12;
+    ny -= 1;
+  }
+  while (nm > 12) {
+    nm -= 12;
+    ny += 1;
+  }
+  return [ny, nm];
+}
+
+/**
+ * Shifts a "YYYY-MM-DD" string by whole years, clamping the day if it lands
+ * on a date that doesn't exist in the target year (Feb 29 shifted into a
+ * non-leap year) — used by getPreviousPeriodYmdRange's "year" case, where
+ * shifting "today" back a year could otherwise land on an invalid date.
+ */
+function shiftYmdYears(ymd: string, deltaYears: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const targetYear = y + deltaYears;
+  const clampedDay = Math.min(d, daysInMonth(targetYear, m));
+  return `${targetYear}-${String(m).padStart(2, "0")}-${String(clampedDay).padStart(2, "0")}`;
+}
+
 /**
  * The "YYYY-MM-DD" range for a dashboard period, in the business timezone.
  * `startYmd: null` means no lower bound (period "all"). Callers convert
@@ -171,23 +202,6 @@ export function getPeriodYmdRange(period: DashboardPeriod): {
   const today = todayYmdInBusinessTimezone();
   const [year, month] = today.split("-").map(Number);
   const endYmdExclusive = addDaysToYmd(today, 1); // through today, inclusive
-
-  function firstOfMonth(y: number, m: number): string {
-    return `${y}-${String(m).padStart(2, "0")}-01`;
-  }
-  function addMonths(y: number, m: number, delta: number): [number, number] {
-    let ny = y;
-    let nm = m + delta;
-    while (nm < 1) {
-      nm += 12;
-      ny -= 1;
-    }
-    while (nm > 12) {
-      nm -= 12;
-      ny += 1;
-    }
-    return [ny, nm];
-  }
 
   switch (period) {
     case "all":
@@ -207,6 +221,60 @@ export function getPeriodYmdRange(period: DashboardPeriod): {
     }
     case "year":
       return { startYmd: `${year}-01-01`, endYmdExclusive };
+  }
+}
+
+/**
+ * The "comparable previous period" for a dashboard period (V2.1 Bloque
+ * UI-7, spec point 67 — "Visitas 24 +12% vs período anterior"). `null` for
+ * "all" (no meaningful previous period to compare a lifetime total
+ * against). Each case mirrors the equivalent window in getPeriodYmdRange,
+ * shifted back by exactly one window:
+ *   this_month → the prior calendar month (same as period "last_month")
+ *   last_month → the calendar month before that
+ *   quarter    → the 3 months immediately before the current rolling window
+ *   year       → the same Jan-1-through-today window, one year earlier
+ *     ("year" here is YTD, not a fixed calendar year — see
+ *     getPeriodYmdRange's doc comment — so its comparison is YTD too, not
+ *     a full prior year, to compare like with like).
+ */
+export function getPreviousPeriodYmdRange(
+  period: DashboardPeriod,
+): { startYmd: string; endYmdExclusive: string } | null {
+  const today = todayYmdInBusinessTimezone();
+  const [year, month] = today.split("-").map(Number);
+
+  switch (period) {
+    case "all":
+      return null;
+    case "this_month": {
+      const [ly, lm] = addMonths(year, month, -1);
+      return {
+        startYmd: firstOfMonth(ly, lm),
+        endYmdExclusive: firstOfMonth(year, month),
+      };
+    }
+    case "last_month": {
+      const [ly, lm] = addMonths(year, month, -1);
+      const [ply, plm] = addMonths(year, month, -2);
+      return {
+        startYmd: firstOfMonth(ply, plm),
+        endYmdExclusive: firstOfMonth(ly, lm),
+      };
+    }
+    case "quarter": {
+      const [qy, qm] = addMonths(year, month, -2);
+      const [pqy, pqm] = addMonths(year, month, -5);
+      return {
+        startYmd: firstOfMonth(pqy, pqm),
+        endYmdExclusive: firstOfMonth(qy, qm),
+      };
+    }
+    case "year":
+      return {
+        startYmd: `${year - 1}-01-01`,
+        endYmdExclusive: addDaysToYmd(shiftYmdYears(today, -1), 1),
+      };
   }
 }
 

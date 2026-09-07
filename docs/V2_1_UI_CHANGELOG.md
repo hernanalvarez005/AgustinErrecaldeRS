@@ -538,3 +538,97 @@ finalizar" cambia el estado del evento a "Realizado" (confirmado por
 correctos ("Muy interesado" y "Avanza: Sí" en verde/success) en la ficha de
 la propiedad. Sin errores de consola. Los 4 registros de prueba (contacto,
 propiedad, 2 actividades) se borraron y se confirmó vacío después.
+
+## Bloque UI-7 — Dashboard
+
+**Qué cambió:**
+
+- [lib/date.ts](../lib/date.ts) (nuevo): `getPreviousPeriodYmdRange` —
+  calcula el rango "período anterior comparable" para cada
+  `DashboardPeriod` (spec punto 67: "Visitas 24 +12% vs período anterior").
+  `this_month`/`last_month`/`quarter` reutilizan los mismos helpers
+  `firstOfMonth`/`addMonths` ya usados por `getPeriodYmdRange` (se subieron
+  a scope de módulo para compartirlos); `year` compara el mismo rango
+  "1 de enero → hoy" pero un año atrás, ya que "year" acá es year-to-date
+  rolling, no un año calendario fijo (ver el comentario ya existente en
+  `getPeriodYmdRange`) — comparar contra un año calendario completo sería
+  comparar cosas distintas. `all` devuelve `null` (no hay "período
+  anterior" de un total histórico).
+- [lib/data/dashboard.ts](../lib/data/dashboard.ts): los 5 KPIs con fecha
+  propia (`getLeadsKpi`, `getVisitsKpi`, `getValuationsKpi`,
+  `getReservationsKpi`, `getClosingsKpi`) aceptan ahora un
+  `DashboardPeriod` **o** un rango ya resuelto (`resolvePeriodRange`,
+  nuevo helper interno) — así la misma función se llama dos veces (período
+  actual + `getPreviousPeriodYmdRange`) sin duplicar ninguna lógica de
+  query. Los 3 embudos no se tocaron: son fotos de cohorte por etapa
+  actual, no tienen un "período anterior" comparable de la misma forma.
+- [components/dashboard/kpi-card.tsx](../components/dashboard/kpi-card.tsx)
+  (nuevo — ya estaba listado como candidato en `docs/DESIGN_SYSTEM.md`):
+  card compacta con el valor y, cuando hay una base comparable, una
+  flecha + porcentaje en `success`/`danger`/muted según el signo (spec
+  punto 74: "positivo → success, negativo → danger"). `delta: null`
+  (período anterior fue 0 pero el actual no) no muestra nada — mostrar
+  "+∞%" sería engañoso, no informativo.
+- [app/(dashboard)/dashboard/page.tsx](<../app/(dashboard)/dashboard/page.tsx>):
+  las 8 KPI cards pasan a `KpiCard` con su delta (excepto "Propiedades
+  captadas", que sale del embudo de captaciones — sin período anterior
+  comparable, ver arriba). El pill de período activo pasa de
+  `bg-foreground` a `bg-primary`.
+- [components/dashboard/funnel-bars.tsx](../components/dashboard/funnel-bars.tsx):
+  la barra de relleno pasa de `bg-foreground` a `bg-primary` (spec punto
+  74: "serie principal → primary"); cada etapa ahora muestra también su
+  porcentaje de conversión relativo a la primera etapa del embudo (spec
+  punto 72: "Mostrar: cantidad; porcentaje de conversión" — antes solo
+  mostraba la cantidad cruda). `title` con el detalle completo a modo de
+  tooltip nativo, sin agregar una librería de charts para esto.
+
+**Componentes nuevos:** `KpiCard`.
+
+**Componentes eliminados:** ninguno.
+
+**Decisiones visuales:**
+
+- El delta solo se calcula para los 5 KPIs con fecha propia — no para
+  "Propiedades captadas" (derivado del embudo, una foto de cohorte, no una
+  query con fecha) ni para los embudos mismos. Extender el patrón a los
+  embudos habría significado decidir qué significa "período anterior" para
+  una distribución de etapas, una pregunta distinta a la de un KPI
+  numérico simple — fuera de alcance de este Bloque.
+- Sin librería de gráficos: se mantiene el criterio ya documentado en
+  `funnel-bars.tsx` (barras CSS a mano, volumen de datos de un asesor
+  individual no lo justifica) — Bloque UI-7 refina lo que ya existe en vez
+  de introducir `recharts`/similar, consistente con la regla 96 de no
+  instalar dependencias nuevas sin necesidad real.
+
+**Pantallas modificadas:** `/dashboard` únicamente.
+
+**Responsive:** sin verificación dedicada a 375px — la grilla de KPIs ya
+era `md:grid-cols-2 xl:grid-cols-4` desde Fase 10, sin cambios de esa
+lógica en este Bloque.
+
+**Charts:** ver "Qué cambió" arriba — color primary en barras de embudo,
+porcentaje de conversión agregado, sin gráficos nuevos (line/bar) en este
+Bloque; los embudos ya cubrían el punto 72 razonablemente bien una vez
+coloreados y con el porcentaje.
+
+**Deuda pendiente / seguimiento:**
+
+- No hay gráfico de tendencia temporal (leads/visitas/captaciones por mes)
+  ni de origen de leads (spec puntos 70-71) — el dashboard actual es todo
+  KPIs + embudos, sin series temporales. Agregar esto requeriría datos
+  agrupados por mes (nueva query, no solo un total del período) y
+  probablemente sí justificaría una librería de charts liviana — capaz
+  bloque futuro si se pide explícitamente.
+
+**Verificación:** `npx next typegen`, `npm run typecheck`, `npm run lint`,
+`npm run build` y `npm run format` sin errores. Se sembraron leads en dos
+meses distintos (2 en agosto, 4 en septiembre) para verificar el delta en
+vivo contra `localhost:3000`: "Leads nuevos" en "Este mes" mostró
+correctamente "4 +100%" en verde con flecha ascendente; en "Mes pasado"
+mostró "2" sin badge de delta (caso sin base comparable — 0 leads el mes
+anterior a agosto — confirmado que no se muestra "+∞%" ni ningún número
+engañoso). Se sembraron 3 captaciones en distintas etapas para verificar
+el embudo: "Nuevo" mostró "100% · 2" y "Captada" "50% · 1", barras en azul
+primary. Sin errores de consola más allá del artefacto de HMR ya
+documentado. Los 13 registros de prueba (6 leads, 3 propiedades, 1
+contacto, 3 captaciones) se borraron y se confirmó vacío después.
