@@ -39,22 +39,23 @@ const NAV_SECTIONS: Array<{
     ],
   },
   {
-    label: "Clientes",
+    label: "Personas",
     items: [
       { title: "Clientes", href: "/contacts", icon: Users },
       { title: "Leads", href: "/leads", icon: Inbox },
     ],
   },
   {
-    label: "Inventario",
+    label: "Negocio",
     items: [
       { title: "Propiedades", href: "/properties", icon: Building2 },
-      { title: "Búsquedas", href: "/searches", icon: Search },
       { title: "Captaciones", href: "/acquisitions", icon: KanbanSquare },
+      { title: "Búsquedas", href: "/searches", icon: Search },
       { title: "Operaciones", href: "/deals", icon: Wallet },
     ],
   },
   {
+    label: "Gestión",
     items: [{ title: "Dashboard", href: "/dashboard", icon: LayoutDashboard }],
   },
 ];

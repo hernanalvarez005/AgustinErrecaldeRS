@@ -483,3 +483,24 @@ Regla general para cualquier `flex-1` futuro dentro de un contenedor con
 placeholder de texto, un ícono con label), siempre necesita un
 `min-w-*` explícito — `flex-1` solo, por sí mismo, no es "se adapta", es
 "se estira o se aplasta hasta cero".
+
+## Gotcha real encontrado: `setState` síncrono dentro de un `useEffect`
+
+`react-hooks/set-state-in-effect` (regla de ESLint que llega con el mismo
+React Compiler que ya dio el gotcha de `react-hooks/purity` arriba) marca
+error cualquier llamada a un setter de estado hecha directamente en el
+cuerpo de un `useEffect` — no dentro de un callback async, un timeout, o
+una suscripción, sino en la primera pasada síncrona del efecto. Apareció
+en V2.1 bloque UI-2, en `components/shared/command-palette.tsx`: el efecto
+que dispara la búsqueda con debounce hacía `setResults({contacts: [],
+properties: []})` de forma síncrona como early-return cuando el término de
+búsqueda bajaba de 2 caracteres, antes de armar el `setTimeout` real.
+
+El fix no es silenciar la regla — es no necesitar el `setState` ahí. En
+vez de limpiar `results` cuando la búsqueda es corta, el render ya sabe
+gatear la sección de resultados por `term.length >= 2`: los resultados
+viejos simplemente quedan sin usarse en el estado hasta la próxima
+búsqueda válida, en vez de forzar una limpieza síncrona en cada tecleo
+corto. Mismo criterio que el gotcha de `Date.now()`: dejar que el lint del
+compilador de React señale un patrón real (setState síncrono en efecto
+causa renders en cascada) en vez de suprimirlo.

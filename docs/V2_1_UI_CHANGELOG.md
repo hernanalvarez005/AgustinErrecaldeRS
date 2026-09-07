@@ -41,7 +41,7 @@ para la fuente de verdad de tokens/componentes.
   del alcance de "foundation".
 - [components/ui/card.tsx](../components/ui/card.tsx): `CardTitle` unifica
   su estilo por defecto a `text-sm font-semibold` (antes `text-base
-  font-medium`, sistemáticamente sobreescrito por cada consumidor a algo
+font-medium`, sistemáticamente sobreescrito por cada consumidor a algo
   distinto — ver inconsistencia #3 de la auditoría). Cambio no disruptivo:
   todo call site existente ya renderizaba texto pequeño, ahora es
   consistente sin necesidad de className repetido.
@@ -60,7 +60,7 @@ para la fuente de verdad de tokens/componentes.
 - Azul `#2563EB` como primary: no había marca establecida (confirmado en la
   auditoría — grep sobre `docs/*.md` y `app/layout.tsx` sin resultados), así
   que se tomó la dirección conceptual sugerida por la spec sin modificarla.
-- Tonos semánticos como *significado*, no *enum*: cada dominio tiene su
+- Tonos semánticos como _significado_, no _enum_: cada dominio tiene su
   propia función en `lib/status-tone.ts` en vez de un mapeo global
   string→color, porque el mismo string (`"active"`, `"new"`) significa cosas
   distintas según el dominio.
@@ -101,3 +101,101 @@ desktop. Verificación real de mobile queda para Bloque UI-8.
 `localhost:3000` (misma base de Supabase hosteada) con sesión real de
 Agustín: `/today`, `/dashboard` y el sidebar expandido — canvas, primary,
 focus ring y estado activo del nav confirmados visualmente sin regresiones.
+
+## Bloque UI-2 — App Shell
+
+**Qué cambió:**
+
+- [components/shared/command-palette.tsx](../components/shared/command-palette.tsx)
+  (nuevo): búsqueda global / command palette (⌘K), spec puntos 25-27.
+  Construido sobre `components/ui/command.tsx`, que ya existía en el
+  proyecto (base shadcn) pero no estaba conectado a nada — reutilizado tal
+  cual, no reconstruido. Combina:
+  - Navegación estática a las 10 secciones de la app.
+  - Atajos de creación estáticos (uno por cada ruta `/nuevo` existente).
+  - Búsqueda real de clientes y propiedades, vía
+    [lib/actions/search.ts](../lib/actions/search.ts) (nuevo Server Action)
+    — que a su vez reutiliza `listContacts`/`listProperties` de
+    `lib/data/`, las mismas funciones que ya usan `/contacts` y
+    `/properties` para su propio filtro `?search=`. Cero lógica de query
+    nueva, solo un punto de entrada invocable desde un Client Component.
+- [components/shared/quick-create-menu.tsx](../components/shared/quick-create-menu.tsx)
+  (nuevo): botón "+ Nuevo" global (spec punto 27) con dropdown a los 6
+  formularios de alta existentes. No reemplaza los botones de creación
+  contextual que ya tiene cada ficha (ej. "+ Nueva oferta" en propiedad) —
+  es solo para crear un registro nuevo desde cualquier pantalla.
+- [components/app-header.tsx](../components/app-header.tsx): header ahora
+  compone `SidebarTrigger`, `CommandPalette` (ocupa el espacio disponible),
+  `QuickCreateMenu` y el avatar/logout — antes solo tenía el trigger y el
+  avatar.
+- [components/app-sidebar.tsx](../components/app-sidebar.tsx): reagrupa
+  secciones siguiendo el punto 21 de la spec — "Clientes"→"Personas",
+  "Inventario"→"Negocio" (reordenado: Propiedades, Captaciones, Búsquedas,
+  Operaciones), y "Dashboard" pasa a su propia sección "Gestión" en vez de
+  quedar suelto. No se agregó un ítem de nav para "Tareas" — no existe esa
+  ruta como sección propia hoy (las tareas viven dentro de "Hoy" y de cada
+  ficha) y crearla sería un módulo funcional nuevo, fuera de alcance de
+  V2.1 (regla 1 de la spec).
+
+**Componentes nuevos:** `CommandPalette`, `QuickCreateMenu`.
+
+**Componentes eliminados:** ninguno.
+
+**Decisiones visuales:**
+
+- La búsqueda global real (no solo navegación) se consideró parte de
+  "foundation del shell" y no un módulo funcional nuevo, porque reutiliza
+  100% de la lógica de datos existente (`listContacts`/`listProperties` ya
+  soportan `search`) — el único código nuevo es el punto de entrada
+  Server Action y la UI del picker. No se creó ninguna tabla, columna, ni
+  regla de negocio nueva.
+- `shouldFilter={false}` en el `<Command>` de cmdk: los resultados mezclan
+  ítems estáticos (filtrados acá mismo por substring) con resultados del
+  servidor (ya filtrados en `lib/actions/search.ts`) — el filtro difuso
+  incorporado de cmdk no puede razonar sobre el grupo asíncrono, así que se
+  desactiva y se filtra a mano.
+- El botón "+ Nuevo" usa `variant="default"` (primary) — es la primera vez
+  en la V2.1 que un botón real usa el color primario como CTA, seteando el
+  precedente para los Bloques UI-3 a UI-6 donde se corrige la jerarquía de
+  botones pantalla por pantalla.
+
+**Pantallas modificadas:** el shell (`app-header.tsx`, `app-sidebar.tsx`)
+afecta a todas las pantallas del dashboard por igual — ninguna página de
+negocio individual fue tocada en este Bloque.
+
+**Responsive:** verificado a 375px (mobile) — el campo de búsqueda colapsa a
+solo el ícono, el atajo `⌘K` se oculta, "+ Nuevo" colapsa a un botón
+ícono-only (`+`), sin overflow horizontal. El command palette (`Dialog`) ya
+es responsive de fábrica (Base UI).
+
+**Charts:** sin cambios — Bloque UI-7.
+
+**Deuda pendiente / seguimiento:**
+
+- La búsqueda global hoy cubre clientes y propiedades — no leads,
+  búsquedas, captaciones ni operaciones. Ampliar la cobertura si se pide,
+  agregado incremental sobre el mismo Server Action.
+- Sigue sin existir una sección de nav para "Tareas" — documentado arriba,
+  fuera de alcance porque implicaría una ruta/funcionalidad nueva.
+- La jerarquía de botones por pantalla (variant="outline" donde debería ir
+  "default") sigue pendiente para los Bloques UI-3 a UI-6.
+
+**Verificación:** `npx next typegen`, `npm run typecheck`, `npm run lint`
+(se encontró y corrigió un error real de `react-hooks/set-state-in-effect`
+en `command-palette.tsx` — ver más abajo), `npm run build` y `npm run
+format` corridos sin errores. Verificado en vivo contra `localhost:3000`
+con sesión real de Agustín: header con búsqueda/+Nuevo/avatar, apertura de
+`⌘K` y por click, filtrado en vivo de navegación/creación al tipear,
+dropdown de "+ Nuevo" con las 6 opciones, sidebar reagrupado, y el shell
+completo a 375px sin overflow.
+
+**Bug real encontrado y corregido en este Bloque:** `command-palette.tsx`
+inicialmente llamaba `setResults(...)` de forma síncrona dentro del cuerpo
+de un `useEffect` para limpiar resultados cuando la búsqueda bajaba de 2
+caracteres — el lint de React Compiler (`react-hooks/set-state-in-effect`)
+lo marcó como error real (cascading renders). Corregido quitando ese
+`setState` y gateando el render de resultados por `term.length >= 2` en vez
+de por el estado limpio, siguiendo el mismo criterio que
+`docs/ARCHITECTURE.md` ya documenta para `react-hooks/purity` en fases
+anteriores: dejar que el lint del compilador de React guíe la corrección en
+vez de silenciarlo.
