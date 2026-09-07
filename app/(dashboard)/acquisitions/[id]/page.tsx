@@ -268,7 +268,7 @@ export default async function AcquisitionDetailPage({
                 placeholder="Notas"
                 className="col-span-2"
               />
-              <Button type="submit" variant="outline" className="col-span-2">
+              <Button type="submit" variant="default" className="col-span-2">
                 Registrar tasación
               </Button>
             </form>
@@ -311,7 +311,7 @@ export default async function AcquisitionDetailPage({
               placeholder="Detalle (opcional)"
               className="min-w-40 flex-1"
             />
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="default">
               Registrar
             </Button>
           </form>
@@ -388,7 +388,7 @@ export default async function AcquisitionDetailPage({
               </SelectContent>
             </Select>
             <Input name="dueAt" type="date" className="w-40" />
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="default">
               Agregar
             </Button>
           </form>
@@ -405,7 +405,7 @@ export default async function AcquisitionDetailPage({
             className="space-y-2"
           >
             <Textarea name="body" placeholder="Agregar una nota..." required />
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="default">
               Guardar nota
             </Button>
           </form>

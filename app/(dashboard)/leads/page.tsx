@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,17 +119,12 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
       </form>
 
       {leads.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-12 text-center">
-          <h2 className="text-lg font-medium">Todavía no tenés leads.</h2>
-          <p className="text-muted-foreground max-w-sm text-sm">
-            Cargá acá cualquier consulta que te llegue por WhatsApp, portales o
-            Instagram para no perderla de vista.
-          </p>
-          <Button render={<Link href="/leads/new" />} nativeButton={false}>
-            <Plus />
-            Nuevo lead
-          </Button>
-        </div>
+        <EmptyState
+          title="Todavía no tenés leads."
+          description="Cargá acá cualquier consulta que te llegue por WhatsApp, portales o Instagram para no perderla de vista."
+          actionLabel="Nuevo lead"
+          actionHref="/leads/new"
+        />
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { updateLeadStatus } from "@/app/(dashboard)/leads/actions";
 import { buildTimeline, Timeline } from "@/components/contacts/timeline";
 import { ConvertLeadForm } from "@/components/leads/convert-lead-form";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,7 @@ import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { getLead } from "@/lib/data/leads";
 import { getProperty } from "@/lib/data/properties";
 import { formatDate, formatDateTime } from "@/lib/format";
+import { leadStatusTone } from "@/lib/status-tone";
 import {
   ACTIVITY_TYPE_LABELS,
   LOGGABLE_ACTIVITY_TYPES,
@@ -84,7 +86,9 @@ export default async function LeadDetailPage({
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge>{LEAD_STATUS_LABELS[lead.status]}</Badge>
+          <StatusBadge tone={leadStatusTone(lead.status)}>
+            {LEAD_STATUS_LABELS[lead.status]}
+          </StatusBadge>
           {lead.source ? (
             <Badge variant="secondary">
               {CONTACT_SOURCE_LABELS[lead.source]}
@@ -144,7 +148,7 @@ export default async function LeadDetailPage({
                 ))}
               </SelectContent>
             </Select>
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="default">
               Actualizar estado
             </Button>
           </form>
@@ -232,7 +236,7 @@ export default async function LeadDetailPage({
               placeholder="Detalle (opcional)"
               className="min-w-40 flex-1"
             />
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="default">
               Registrar
             </Button>
           </form>
@@ -305,7 +309,7 @@ export default async function LeadDetailPage({
               </SelectContent>
             </Select>
             <Input name="dueAt" type="date" className="w-40" />
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="default">
               Agregar
             </Button>
           </form>
@@ -322,7 +326,7 @@ export default async function LeadDetailPage({
             className="space-y-2"
           >
             <Textarea name="body" placeholder="Agregar una nota..." required />
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="default">
               Guardar nota
             </Button>
           </form>

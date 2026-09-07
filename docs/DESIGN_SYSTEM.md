@@ -119,22 +119,39 @@ fondo y el tono como texto/borde. Mismo tamaño/forma que `Badge` (pill,
 ## Componentes del design system (V2.1)
 
 Construidos solo donde aportan reutilización real (punto 91 de la spec —
-evitar sobreabstracción). Ver `docs/V2_1_UI_CHANGELOG.md` a medida que se
-crean, con el archivo y el Bloque en que se introdujo cada uno.
+evitar sobreabstracción). Ver `docs/V2_1_UI_CHANGELOG.md` para el detalle
+completo de cada uno; esta es la lista final tras los 9 Bloques.
 
-Candidatos identificados en la auditoría (se crean bajo demanda, en el
-Bloque que primero los necesita, no todos de una vez):
+**Construidos:**
 
-- `StatusBadge` — Bloque UI-1
-- `PageHeader` (título + acciones de página, reemplaza el `<div className="flex items-center justify-between">` repetido en cada page.tsx) — Bloque UI-2
-- `SectionHeader` (unifica el patrón `CardHeader`+`CardTitle` con tamaño/peso consistente) — Bloque UI-1
-- `EmptyState` (mensaje + CTA opcional) — donde primero se necesite un empty state accionable
-- `KpiCard` — Bloque UI-7 (dashboard)
-- `Timeline` — ya existe (`components/contacts/timeline.tsx`), evaluar generalizar en Bloque UI-4
+- `StatusBadge` (`components/shared/status-badge.tsx`) — Bloque UI-1,
+  conectado pantalla por pantalla hasta UI-9. Único componente para todo
+  estado de negocio en la app (confirmado por grep, cero excepciones).
+- `CommandPalette` (`components/shared/command-palette.tsx`) — Bloque UI-2.
+- `QuickCreateMenu` (`components/shared/quick-create-menu.tsx`) — Bloque UI-2.
+- `AcquisitionsBoard`/`DealsBoard` — Bloque UI-5 (filtro + switch Kanban/tabla).
+- `KpiCard` (`components/dashboard/kpi-card.tsx`) — Bloque UI-7.
+- `EmptyState` (`components/shared/empty-state.tsx`) — Bloque UI-9.
+- `PageSkeleton` (`components/shared/page-skeleton.tsx`) — Bloque UI-9,
+  usado por los `loading.tsx` de las rutas principales.
+- `Timeline` — ya existía (`components/contacts/timeline.tsx`), se
+  reutilizó tal cual en las fichas de propiedad/búsqueda/lead/captación/
+  operación durante UI-4/UI-5 sin necesitar generalizarlo más.
 
-No se crean `DataTable`, `FilterBar`, `EntityHeader`, `QuickActions`,
-`Metric`, `ActivityRow` genéricos hasta que un Bloque concreto los necesite
-— crearlos por adelantado violaría el punto 91 (no sobreabstraer).
+**Deliberadamente NO construidos** (evaluados y descartados, no
+candidatos olvidados):
+
+- `PageHeader`/`SectionHeader`: el patrón `<div className="flex
+items-center justify-between">` de cada listado y el `CardHeader`+
+  `CardTitle` de cada card ya eran consistentes una vez arreglado el
+  default de `CardTitle` (Bloque UI-1) y agregado `flex-wrap` (Bloque
+  UI-8) — envolverlos en un componente no habría reducido código real, así
+  que se mantuvieron como `className` directo en cada `page.tsx`.
+- `DataTable`, `FilterBar`, `EntityHeader`, `QuickActions`, `Metric`,
+  `ActivityRow`: ningún Bloque terminó necesitando una abstracción
+  compartida para esto — cada tabla/filtro ya tenía su propio componente
+  `Table`/`Select`/`Input` reutilizado directamente, sin duplicación real
+  que justificara envolverlos.
 
 ## Qué NO se toca
 

@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,17 +89,12 @@ export default async function ContactsPage({
       </form>
 
       {contacts.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-12 text-center">
-          <h2 className="text-lg font-medium">Todavía no tenés contactos.</h2>
-          <p className="text-muted-foreground max-w-sm text-sm">
-            Creá tu primer contacto para empezar a registrar búsquedas, tareas y
-            actividades.
-          </p>
-          <Button render={<Link href="/contacts/new" />} nativeButton={false}>
-            <Plus />
-            Nuevo contacto
-          </Button>
-        </div>
+        <EmptyState
+          title="Todavía no tenés contactos."
+          description="Creá tu primer contacto para empezar a registrar búsquedas, tareas y actividades."
+          actionLabel="Nuevo contacto"
+          actionHref="/contacts/new"
+        />
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>

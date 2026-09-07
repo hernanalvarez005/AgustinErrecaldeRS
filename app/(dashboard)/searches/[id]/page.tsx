@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { updateSearchStatus } from "@/app/(dashboard)/searches/actions";
 import { buildTimeline, Timeline } from "@/components/contacts/timeline";
 import { MatchScoreBadge } from "@/components/matching/match-score-badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,7 @@ import { getActivities, getNotes, getTasks } from "@/lib/data/engagement";
 import { getPropertyMatchesForSearch } from "@/lib/data/matching";
 import { getSearch } from "@/lib/data/searches";
 import { formatBudget, formatDate } from "@/lib/format";
+import { searchStatusTone } from "@/lib/status-tone";
 import {
   ACTIVITY_TYPE_LABELS,
   LOGGABLE_ACTIVITY_TYPES,
@@ -101,7 +103,9 @@ export default async function SearchDetailPage({
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge>{SEARCH_STATUS_LABELS[search.status]}</Badge>
+          <StatusBadge tone={searchStatusTone(search.status)}>
+            {SEARCH_STATUS_LABELS[search.status]}
+          </StatusBadge>
           {search.objective ? (
             <Badge variant="secondary">
               {SEARCH_OBJECTIVE_LABELS[search.objective]}
@@ -156,7 +160,7 @@ export default async function SearchDetailPage({
                 ))}
               </SelectContent>
             </Select>
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="default">
               Actualizar estado
             </Button>
           </form>
@@ -213,7 +217,7 @@ export default async function SearchDetailPage({
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button type="submit" size="sm" variant="outline">
+                    <Button type="submit" size="sm" variant="default">
                       Registrar envío
                     </Button>
                   </form>
@@ -264,7 +268,7 @@ export default async function SearchDetailPage({
               placeholder="Detalle (opcional)"
               className="min-w-40 flex-1"
             />
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="default">
               Registrar
             </Button>
           </form>
@@ -337,7 +341,7 @@ export default async function SearchDetailPage({
               </SelectContent>
             </Select>
             <Input name="dueAt" type="date" className="w-40" />
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="default">
               Agregar
             </Button>
           </form>
@@ -354,7 +358,7 @@ export default async function SearchDetailPage({
             className="space-y-2"
           >
             <Textarea name="body" placeholder="Agregar una nota..." required />
-            <Button type="submit" variant="outline">
+            <Button type="submit" variant="default">
               Guardar nota
             </Button>
           </form>

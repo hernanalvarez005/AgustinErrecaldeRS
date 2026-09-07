@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 
 import { AcquisitionsBoard } from "@/components/acquisitions/acquisitions-board";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { requireMembership } from "@/lib/auth/session";
 import { listAcquisitions } from "@/lib/data/acquisitions";
@@ -55,19 +56,12 @@ export default async function AcquisitionsPage({
       </div>
 
       {acquisitions.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-12 text-center">
-          <h2 className="text-lg font-medium">Todavía no tenés captaciones.</h2>
-          <p className="text-muted-foreground max-w-sm text-sm">
-            Registrá un propietario interesado en vender para comenzar.
-          </p>
-          <Button
-            render={<Link href="/acquisitions/new" />}
-            nativeButton={false}
-          >
-            <Plus />
-            Nueva captación
-          </Button>
-        </div>
+        <EmptyState
+          title="Todavía no tenés captaciones."
+          description="Registrá un propietario interesado en vender para comenzar."
+          actionLabel="Nueva captación"
+          actionHref="/acquisitions/new"
+        />
       ) : (
         <AcquisitionsBoard acquisitions={acquisitions} view={view} />
       )}

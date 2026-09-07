@@ -724,3 +724,129 @@ confirmada sin overflow horizontal de página vía
 `scrollWidth === clientWidth` (no solo revisión visual) antes y después de
 cada fix. Los 13 registros de prueba se borraron y se confirmó vacío
 después.
+
+## Bloque UI-9 — Polish final
+
+**Qué cambió:**
+
+- **Barrido de consistencia de botones** (spec punto 95: "'Guardar' primary
+  en una pantalla y secondary en otra"): 18 botones de guardar/crear que
+  seguían en `variant="outline"` pasan a `variant="default"` en
+  `searches/[id]` (5), `leads/[id]` (4), `deals/[id]` (4),
+  `acquisitions/[id]` (4) y `properties/[id]` (1) — el mismo fix que los
+  Bloques UI-4/UI-5 ya habían aplicado en `contacts/[id]` y
+  `properties/[id]`, pero que no había llegado a estas otras 4 fichas. Se
+  dejaron deliberadamente en `outline` las acciones que no son creación
+  (`Filtrar`, `Desconectar` en `/settings`, `Marcar perdida` en
+  captaciones — esta última casi destructiva, no una acción positiva).
+- **Barrido de `StatusBadge`**: `leads/[id]` y `searches/[id]` todavía
+  usaban `<Badge>` plano para el estado del lead/búsqueda en el header —
+  quedaron afuera de los Bloques UI-4/UI-5 porque esos Bloques se
+  centraron en otras pantallas. Convertidos a `StatusBadge` con
+  `leadStatusTone`/`searchStatusTone`. Grep final
+  (`<Badge[^>]*>{[A-Z_]*STATUS`) sobre toda la app: cero resultados — todo
+  badge de estado de negocio pasa por `StatusBadge`.
+- [components/shared/empty-state.tsx](../components/shared/empty-state.tsx)
+  (nuevo — ya listado como candidato en `docs/DESIGN_SYSTEM.md`): title +
+  description + un CTA (spec punto 60), consolidando la misma estructura
+  que `/properties`, `/contacts`, `/leads`, `/searches`, `/acquisitions` y
+  `/deals` ya duplicaban por separado para su estado "lista totalmente
+  vacía" (con `+ Nuevo X` como acción, ya presente en las 6).
+- `loading.tsx` (nuevos, 9 rutas: `/today`, `/dashboard`, `/calendar`,
+  `/properties`, `/contacts`, `/leads`, `/searches`, `/acquisitions`,
+  `/deals`) +
+  [components/shared/page-skeleton.tsx](../components/shared/page-skeleton.tsx)
+  (nuevo): spec punto 61 — "preferir skeletons... no spinner gigante
+  central". Convención nativa de Next.js App Router: un `loading.tsx` en
+  el segmento envuelve automáticamente ese `page.tsx` en un `<Suspense>`
+  con ese fallback — cero cambios a los Server Components existentes,
+  cero riesgo de romper la lógica de datos que ya funcionaba.
+- [app/(dashboard)/error.tsx](<../app/(dashboard)/error.tsx>) (nuevo):
+  spec punto 62 — "No pudimos cargar las visitas. [Reintentar]", como red
+  de seguridad para un error realmente inesperado (no para una query de
+  Supabase fallida — esas ya loguean y devuelven `[]`/`null` en vez de
+  tirar, ver `docs/ARCHITECTURE.md`, así que casi nunca van a disparar
+  este boundary; la mayoría de los "no pudimos cargar X" de esta app ya
+  se resuelven como una lista vacía, no como un error).
+- [docs/V2_1_FOLLOWUPS.md](../docs/V2_1_FOLLOWUPS.md) (nuevo): consolida
+  toda la deuda "Deuda pendiente / seguimiento" dispersa en este changelog
+  Bloque por Bloque en un solo lugar (spec punto 92).
+
+**Componentes nuevos:** `EmptyState`, `PageSkeleton`.
+
+**Componentes eliminados:** ninguno — el markup duplicado de empty state en
+los 6 listados se reemplazó por `EmptyState`, sin quitar funcionalidad.
+
+**Decisiones visuales:**
+
+- `loading.tsx` a nivel de ruta, no `<Suspense>` granular dentro de cada
+  página envolviendo secciones individuales — más simple, cero riesgo, y
+  suficiente para páginas que ya hacen todo su fetch en un solo
+  `Promise.all` al principio (todas las tocadas en V2.1). Un
+  `<Suspense>` granular (cargar el header antes que las cards) sería una
+  optimización real pero de otro orden de esfuerzo — no es lo que pide el
+  punto 61 ("preferir skeletons" vs. spinner, no streaming granular).
+- `error.tsx` a nivel de todo el segmento `(dashboard)`, no uno por ruta —
+  20+ páginas comparten el mismo criterio de "error inesperado, botón
+  reintentar", un solo boundary alcanza sin duplicar el mismo componente
+  20 veces.
+
+**Pantallas modificadas:** `searches/[id]`, `leads/[id]`, `deals/[id]`,
+`acquisitions/[id]`, `properties/[id]` (botones/badges), `/properties`,
+`/contacts`, `/leads`, `/searches`, `/acquisitions`, `/deals` (empty
+state), + 9 rutas nuevas con `loading.tsx`.
+
+**Responsive:** sin cambios de layout en este Bloque.
+
+**Charts:** no aplica.
+
+**Deuda pendiente / seguimiento:** ver `docs/V2_1_FOLLOWUPS.md` (nuevo,
+consolida todo lo de Bloques anteriores).
+
+**Checklist de QA final (spec punto 94), verificado sobre la V2.1
+completa:**
+
+- ✅ Spacing/alignment: escala 4/8/12/16/24/32 sin arbitrarios (auditado en
+  UI-1, sin cambios desde entonces).
+- ✅ Font sizes: `CardTitle` unificado a `text-sm font-semibold` (UI-1),
+  page title `text-2xl` consistente en las 11 pantallas principales.
+- ✅ Colors: un solo primary (`#2563EB`), tokens semánticos vía
+  `lib/status-tone.ts` — cero color hardcodeado (`bg-green-500` etc.)
+  encontrado en el grep final de este Bloque.
+- ✅ Badges: `StatusBadge` en el 100% de los estados de negocio (grep
+  final, cero `<Badge>` plano con un `*_STATUS_LABELS`).
+- ✅ Button hierarchy: primary para creación/guardado, outline para
+  acciones secundarias/filtros, ghost para terciarias — barrido completo
+  en este Bloque, sin inconsistencias restantes encontradas.
+- ✅ Tables: un solo `Table` component, densidad consistente (sin cambios
+  desde antes de V2.1, ya estaba bien).
+- ✅ Forms: alturas de `Input`/`Select` consistentes (`h-8`), sin cambios
+  necesarios.
+- ✅ Empty states: consolidados en `EmptyState`, con CTA en los 6 listados
+  principales.
+- ✅ Loading: `loading.tsx` en las 9 rutas de mayor tráfico.
+- ✅ Responsive/mobile: auditoría dedicada completa en Bloque UI-8, 3 bugs
+  reales encontrados y corregidos, verificado sin overflow horizontal de
+  página en 11+ pantallas.
+- ✅ Charts: colores primary/success/danger en vez de paleta arbitraria
+  (Bloque UI-7); sin gráficos de línea/barra nuevos — ver
+  `docs/V2_1_FOLLOWUPS.md`.
+
+**Verificación:** `npx next typegen`, `npm run typecheck`, `npm run lint`,
+`npm run build` y `npm run format` sin errores en cada paso de este
+Bloque. Verificado en vivo contra `localhost:3000`: `EmptyState` renderiza
+correctamente en `/properties` y `/leads` (organización sin datos —
+confirmado con la base real, sin necesitar sembrar/borrar nada esta vez),
+`loading.tsx` capturado en acción (un `get_page_text` disparado justo
+después de navegar devolvió el fallback en vez del contenido final, la
+segunda llamada ya mostró el contenido real). Sin errores de consola más
+allá del artefacto de HMR ya documentado.
+
+---
+
+Con este Bloque se completan los 9 Bloques de la iteración V2.1
+(Foundation → App Shell → Hoy → Entidades → Pipelines → Agenda/Tasks →
+Dashboard → Mobile → Polish final). Ver `docs/V2_1_UI_AUDIT.md` para el
+diagnóstico inicial, `docs/DESIGN_SYSTEM.md` para la fuente de verdad de
+tokens/componentes, y `docs/V2_1_FOLLOWUPS.md` para lo que queda
+deliberadamente fuera de alcance.

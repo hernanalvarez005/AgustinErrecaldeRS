@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 
 import { DealsBoard } from "@/components/deals/deals-board";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { requireMembership } from "@/lib/auth/session";
 import { listDeals } from "@/lib/data/deals";
@@ -41,17 +42,12 @@ export default async function DealsPage({ searchParams }: PageProps<"/deals">) {
       </div>
 
       {deals.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-12 text-center">
-          <h2 className="text-lg font-medium">Todavía no tenés operaciones.</h2>
-          <p className="text-muted-foreground max-w-sm text-sm">
-            Registrá un comprador y un vendedor negociando una propiedad para
-            empezar a hacer seguimiento del cierre.
-          </p>
-          <Button render={<Link href="/deals/new" />} nativeButton={false}>
-            <Plus />
-            Nueva operación
-          </Button>
-        </div>
+        <EmptyState
+          title="Todavía no tenés operaciones."
+          description="Registrá un comprador y un vendedor negociando una propiedad para empezar a hacer seguimiento del cierre."
+          actionLabel="Nueva operación"
+          actionHref="/deals/new"
+        />
       ) : (
         <DealsBoard deals={deals} view={view} />
       )}

@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,17 +181,12 @@ export default async function SearchesPage({
       </form>
 
       {searches.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-12 text-center">
-          <h2 className="text-lg font-medium">Todavía no tenés búsquedas.</h2>
-          <p className="text-muted-foreground max-w-sm text-sm">
-            Creá una búsqueda para empezar a registrar qué necesita cada
-            cliente.
-          </p>
-          <Button render={<Link href="/searches/new" />} nativeButton={false}>
-            <Plus />
-            Nueva búsqueda
-          </Button>
-        </div>
+        <EmptyState
+          title="Todavía no tenés búsquedas."
+          description="Creá una búsqueda para empezar a registrar qué necesita cada cliente."
+          actionLabel="Nueva búsqueda"
+          actionHref="/searches/new"
+        />
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>

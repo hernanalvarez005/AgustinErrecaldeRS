@@ -428,7 +428,7 @@ export default async function PropertyDetailPage({
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button type="submit" size="sm" variant="outline">
+                        <Button type="submit" size="sm" variant="default">
                           Registrar envío
                         </Button>
                       </form>

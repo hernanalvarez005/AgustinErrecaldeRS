@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,17 +127,12 @@ export default async function PropertiesPage({
       </form>
 
       {properties.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-12 text-center">
-          <h2 className="text-lg font-medium">Todavía no tenés propiedades.</h2>
-          <p className="text-muted-foreground max-w-sm text-sm">
-            Creá tu primera propiedad para empezar a registrar propietarios,
-            visitas y operaciones.
-          </p>
-          <Button render={<Link href="/properties/new" />} nativeButton={false}>
-            <Plus />
-            Nueva propiedad
-          </Button>
-        </div>
+        <EmptyState
+          title="Todavía no tenés propiedades."
+          description="Creá tu primera propiedad para empezar a registrar propietarios, visitas y operaciones."
+          actionLabel="Nueva propiedad"
+          actionHref="/properties/new"
+        />
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <Table>
