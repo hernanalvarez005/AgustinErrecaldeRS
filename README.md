@@ -35,13 +35,14 @@ Copiá `.env.example` a `.env.local` y completá los valores:
 cp .env.example .env.local
 ```
 
-| Variable                                                            | Descripción                                                                            |
-| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`                                          | URL del proyecto Supabase (dashboard o `supabase status` local)                        |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`                                     | Clave anónima (pública) del proyecto                                                   |
-| `SUPABASE_SERVICE_ROLE_KEY`                                         | Solo servidor. Reservada para uso futuro — nunca exponerla al navegador ni commitearla |
-| `NEXT_PUBLIC_SITE_URL`                                              | Base URL usada para links de magic link / confirmación de email                        |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` | OAuth de Google Calendar (Fase 9, no usadas todavía)                                   |
+| Variable                                                            | Descripción                                                                                                           |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`                                          | URL del proyecto Supabase (dashboard o `supabase status` local)                                                       |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`                                     | Clave anónima (pública) del proyecto                                                                                  |
+| `SUPABASE_SERVICE_ROLE_KEY`                                         | Solo servidor, nunca exponerla al navegador ni commitearla. La usa el cron de retención (Fase 12) para bypassear RLS  |
+| `NEXT_PUBLIC_SITE_URL`                                              | Base URL usada para links de magic link / confirmación de email — en producción, la URL real de Vercel                |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` | OAuth de Google Calendar (Fase 9). `GOOGLE_REDIRECT_URI` debe coincidir exacto con lo cargado en Google Cloud Console |
+| `CRON_SECRET`                                                       | Bearer token que Vercel Cron manda al pegarle a `/api/cron/retention-tasks` (Fase 12) — cualquier string random       |
 
 ## Supabase: setup local
 
@@ -107,11 +108,28 @@ npm run build       # build de producción (Turbopack)
 
 ## Despliegue (Vercel)
 
-1. Importar el repositorio en Vercel.
+1. Importar el repositorio en Vercel (Next.js se detecta solo, no hace
+   falta configurar build command ni output directory).
 2. Configurar las variables de entorno de la tabla de arriba para
-   Production, Preview y Development.
-3. `SUPABASE_SERVICE_ROLE_KEY` y los secretos de Google solo como server-side
-   (nunca con el prefijo `NEXT_PUBLIC_`).
+   Production (y Preview/Development si se van a usar) — `SUPABASE_SERVICE_ROLE_KEY`
+   y los secretos de Google solo como server-side, nunca con el prefijo
+   `NEXT_PUBLIC_`.
+3. Después del primer deploy, Vercel asigna un dominio
+   (`<proyecto>.vercel.app` o uno propio). Con ese dominio ya conocido:
+   - Actualizar `NEXT_PUBLIC_SITE_URL` y `GOOGLE_REDIRECT_URI`
+     (`https://<dominio>/api/google/callback`) en las variables de
+     entorno de Vercel, y volver a desplegar (un cambio de variable de
+     entorno no aplica solo, necesita un nuevo deploy).
+   - Agregar `https://<dominio>/api/google/callback` a "Authorized
+     redirect URIs" en el cliente OAuth de Google Cloud Console (además
+     del de `localhost`, que puede quedar para seguir probando en local).
+   - Agregar `https://<dominio>` a Supabase → Authentication → URL
+     Configuration → Site URL / Redirect URLs (si no está, el magic link
+     y la confirmación de signup redirigen mal en producción).
+4. El cron de `vercel.json` (`/api/cron/retention-tasks`) se activa solo
+   al desplegar — se puede verificar en la pestaña "Cron Jobs" del
+   proyecto en Vercel, y disparar a mano desde ahí para probarlo sin
+   esperar al horario programado.
 
 ## Arquitectura y decisiones
 
