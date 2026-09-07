@@ -61,6 +61,23 @@ export function formatDateTime(value: string | null | undefined) {
 }
 
 /**
+ * Time only ("09:30"), no date — for a timeline that's already scoped to a
+ * single day (Hoy's agenda, V2.1 bloque UI-3) where repeating the date on
+ * every row would be redundant. Same safe pattern as formatDateTime: always
+ * through `toLocaleString` with an explicit `timeZone`, never a raw
+ * `Date#getHours()` (which would read the *server's* zone, not
+ * BUSINESS_TIMEZONE — see the timezone gotchas in docs/ARCHITECTURE.md).
+ */
+export function formatTime(value: string | null | undefined) {
+  if (!value) return null;
+  return new Date(value).toLocaleString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: BUSINESS_TIMEZONE,
+  });
+}
+
+/**
  * "hace 18 min" / "hace 3 h" / "hace 2 d" — for a real timestamp
  * (`leads.created_at`), not a calendar date. This diffs two real instants
  * (now vs. `value`), so unlike the helpers above there is no business-vs-UTC

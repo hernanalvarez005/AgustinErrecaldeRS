@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { completeTask, rescheduleTask } from "@/lib/actions/engagement";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,12 +19,14 @@ import {
   type TodayLead,
   type TodayTask,
 } from "@/lib/data/today";
-import { formatDate, formatDateTime, formatRelativeTime } from "@/lib/format";
+import { formatDate, formatRelativeTime, formatTime } from "@/lib/format";
 import type { EngagementContext } from "@/lib/data/engagement";
+import { dealStatusTone, taskPriorityTone } from "@/lib/status-tone";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/validations/activity";
 import { CONTACT_SOURCE_LABELS } from "@/lib/validations/contact";
 import { DEAL_STATUS_LABELS } from "@/lib/validations/deal";
 import { TASK_PRIORITY_LABELS } from "@/lib/validations/task";
+import type { TaskPriority } from "@/types/database.types";
 
 function LinkOrPlain({
   link,
@@ -51,22 +53,23 @@ function TaskRow({ task }: { task: TodayTask }) {
     dealId: task.deal_id ?? undefined,
   };
 
+  const priority = task.priority as TaskPriority;
+
   return (
     <li className="space-y-1.5 text-sm">
-      <div>
+      <div className="flex flex-wrap items-center gap-1.5">
         <LinkOrPlain link={task.link}>{task.title}</LinkOrPlain>
-        <span className="text-muted-foreground">
-          {" "}
-          ·{" "}
-          {
-            TASK_PRIORITY_LABELS[
-              task.priority as keyof typeof TASK_PRIORITY_LABELS
-            ]
-          }
-          {task.link ? ` · ${task.link.label}` : ""}
-          {task.due_at ? ` · ${formatDate(task.due_at)}` : ""}
-        </span>
+        <StatusBadge tone={taskPriorityTone(priority)}>
+          {TASK_PRIORITY_LABELS[priority]}
+        </StatusBadge>
       </div>
+      {task.link || task.due_at ? (
+        <p className="text-muted-foreground">
+          {task.link ? task.link.label : null}
+          {task.link && task.due_at ? " · " : null}
+          {task.due_at ? formatDate(task.due_at) : null}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <form action={completeTask.bind(null, context, task.id)}>
           <Button type="submit" size="sm" variant="ghost">
@@ -125,24 +128,23 @@ function AgendaList({ activities }: { activities: TodayActivity[] }) {
     );
   }
   return (
-    <ul className="space-y-2">
+    <ul className="space-y-3">
       {activities.map((activity) => (
-        <li key={activity.id} className="text-sm">
-          <span className="text-muted-foreground">
-            {formatDateTime(activity.starts_at)} ·{" "}
+        <li key={activity.id} className="flex gap-3 text-sm">
+          <span className="text-muted-foreground w-11 shrink-0 pt-0.5 font-medium tabular-nums">
+            {formatTime(activity.starts_at)}
           </span>
-          <LinkOrPlain link={activity.link}>
-            {ACTIVITY_TYPE_LABELS[activity.type]}
-          </LinkOrPlain>
-          {activity.link ? (
-            <span className="text-muted-foreground">
-              {" "}
-              · {activity.link.label}
-            </span>
-          ) : null}
-          {activity.description ? (
-            <p className="text-muted-foreground">{activity.description}</p>
-          ) : null}
+          <div className="min-w-0">
+            <LinkOrPlain link={activity.link}>
+              {ACTIVITY_TYPE_LABELS[activity.type]}
+            </LinkOrPlain>
+            {activity.link ? (
+              <p className="text-muted-foreground">{activity.link.label}</p>
+            ) : null}
+            {activity.description ? (
+              <p className="text-muted-foreground">{activity.description}</p>
+            ) : null}
+          </div>
         </li>
       ))}
     </ul>
@@ -199,20 +201,23 @@ function DealsList({ deals }: { deals: TodayDeal[] }) {
   return (
     <ul className="space-y-2">
       {deals.map((deal) => (
-        <li key={deal.id} className="text-sm">
-          <Link
-            href={`/deals/${deal.id}`}
-            className="font-medium hover:underline"
-          >
-            {deal.property_title ?? "Operación"}
-          </Link>
-          <span className="text-muted-foreground">
-            {" "}
-            · {DEAL_STATUS_LABELS[deal.status]}
-            {deal.next_action_at
-              ? ` · Próxima acción: ${formatDate(deal.next_action_at)}`
-              : ""}
-          </span>
+        <li key={deal.id} className="space-y-1 text-sm">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Link
+              href={`/deals/${deal.id}`}
+              className="font-medium hover:underline"
+            >
+              {deal.property_title ?? "Operación"}
+            </Link>
+            <StatusBadge tone={dealStatusTone(deal.status)}>
+              {DEAL_STATUS_LABELS[deal.status]}
+            </StatusBadge>
+          </div>
+          {deal.next_action_at ? (
+            <p className="text-muted-foreground">
+              Próxima acción: {formatDate(deal.next_action_at)}
+            </p>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -252,7 +257,11 @@ export default async function TodayPage() {
   // acción). Composed here instead of inside listCommercialAlerts to avoid
   // querying overdue tasks twice — the card below already needs the list,
   // not just the count.
-  const attentionItems: { href: string; label: string }[] = [
+  const attentionItems: {
+    href: string;
+    label: string;
+    tone: "danger" | "warning";
+  }[] = [
     ...(overdueTasks.length > 0
       ? [
           {
@@ -261,10 +270,18 @@ export default async function TodayPage() {
               overdueTasks.length === 1
                 ? "1 seguimiento vencido"
                 : `${overdueTasks.length} seguimientos vencidos`,
+            // "Vencido" ya pasó su fecha — danger, no solo "requiere
+            // atención" (spec: warning es para "próximo a vencer", danger
+            // para "vencido").
+            tone: "danger" as const,
           },
         ]
       : []),
-    ...alerts.map((a) => ({ href: a.href, label: a.label })),
+    ...alerts.map((a) => ({
+      href: a.href,
+      label: a.label,
+      tone: "warning" as const,
+    })),
   ];
 
   return (
@@ -286,7 +303,7 @@ export default async function TodayPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Requieren tu atención</CardTitle>
+          <CardTitle>Requieren tu atención</CardTitle>
         </CardHeader>
         <CardContent>
           {attentionItems.length === 0 ? (
@@ -297,10 +314,8 @@ export default async function TodayPage() {
             <ul className="flex flex-wrap gap-2">
               {attentionItems.map((item) => (
                 <li key={item.href}>
-                  <Link href={item.href}>
-                    <Badge variant="secondary" className="cursor-pointer">
-                      {item.label}
-                    </Badge>
+                  <Link href={item.href} className="hover:opacity-80">
+                    <StatusBadge tone={item.tone}>{item.label}</StatusBadge>
                   </Link>
                 </li>
               ))}
@@ -310,31 +325,25 @@ export default async function TodayPage() {
       </Card>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Card>
+        <Card size="sm">
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-sm font-medium">
-              Agenda de hoy
-            </CardTitle>
+            <CardTitle>Agenda de hoy</CardTitle>
           </CardHeader>
           <CardContent>
             <AgendaList activities={todayActivities} />
           </CardContent>
         </Card>
-        <Card>
+        <Card size="sm">
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-sm font-medium">
-              Tareas para hoy
-            </CardTitle>
+            <CardTitle>Tareas para hoy</CardTitle>
           </CardHeader>
           <CardContent>
             <TaskList tasks={tasksToday} emptyMessage="Sin tareas para hoy." />
           </CardContent>
         </Card>
-        <Card id="seguimientos-vencidos">
+        <Card size="sm" id="seguimientos-vencidos">
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-sm font-medium">
-              Seguimientos vencidos
-            </CardTitle>
+            <CardTitle>Seguimientos vencidos</CardTitle>
           </CardHeader>
           <CardContent>
             <TaskList
@@ -343,21 +352,17 @@ export default async function TodayPage() {
             />
           </CardContent>
         </Card>
-        <Card>
+        <Card size="sm">
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-sm font-medium">
-              Leads pendientes
-            </CardTitle>
+            <CardTitle>Leads pendientes</CardTitle>
           </CardHeader>
           <CardContent>
             <LeadsList leads={unansweredLeads} />
           </CardContent>
         </Card>
-        <Card>
+        <Card size="sm">
           <CardHeader>
-            <CardTitle className="text-muted-foreground text-sm font-medium">
-              Operaciones activas
-            </CardTitle>
+            <CardTitle>Operaciones activas</CardTitle>
           </CardHeader>
           <CardContent>
             <DealsList deals={dealsNeedingAttention} />

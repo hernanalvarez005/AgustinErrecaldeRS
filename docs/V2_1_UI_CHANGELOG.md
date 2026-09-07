@@ -199,3 +199,71 @@ de por el estado limpio, siguiendo el mismo criterio que
 `docs/ARCHITECTURE.md` ya documenta para `react-hooks/purity` en fases
 anteriores: dejar que el lint del compilador de React guíe la corrección en
 vez de silenciarlo.
+
+## Bloque UI-3 — Hoy
+
+**Qué cambió** (todo en
+[app/(dashboard)/today/page.tsx](<../app/(dashboard)/today/page.tsx>) salvo
+donde se indica):
+
+- "Requieren tu atención" pasa de `Badge variant="secondary"` (gris plano)
+  a `StatusBadge`: el ítem de seguimientos vencidos usa tono `danger`
+  ("vencido" — ya pasó su fecha) y las alertas de leads/pipelines sin
+  próxima acción usan `warning` ("requiere seguimiento") — primera
+  conexión real de `StatusBadge`/`lib/status-tone.ts` (creados en Bloque
+  UI-1) a una pantalla.
+- `TaskRow` (usada por "Tareas para hoy" y "Seguimientos vencidos"): la
+  prioridad pasa de texto plano (`· Alta`) a un `StatusBadge` con
+  `taskPriorityTone` — urgente en rojo, alta en naranja, distinguible de un
+  vistazo en vez de tener que leer la palabra.
+- `AgendaList`: rediseñada como timeline compacto (spec punto 34) — la hora
+  pasa a su propia columna en negrita (`lib/format.ts`: nuevo helper
+  `formatTime`, mismo patrón seguro de zona horaria que `formatDateTime`,
+  solo que sin repetir la fecha en cada fila ya que la lista completa es de
+  "hoy").
+- `DealsList`: el estado de la operación pasa de texto plano a
+  `StatusBadge` con `dealStatusTone`.
+- Los 5 cards de la grilla (Agenda, Tareas, Seguimientos vencidos, Leads,
+  Operaciones) pasan a `size="sm"` (más densos) y sus `CardTitle` pierden el
+  `className="text-muted-foreground text-sm font-medium"` que cada uno
+  repetía por separado — ahora heredan el default unificado del componente
+  (Bloque UI-1), resolviendo la inconsistencia #3 de la auditoría en esta
+  pantalla.
+
+**Componentes nuevos:** ninguno — solo consumo de `StatusBadge` (UI-1).
+
+**Componentes eliminados:** ninguno. `Badge` (el genérico) ya no se importa
+en este archivo — todo pasó a `StatusBadge`.
+
+**Decisiones visuales:**
+
+- No se reordenó la grilla ni se convirtió "Completar"/"Reprogramar" en
+  acciones solo-hover: la spec dice "preferentemente" al hover, y
+  ocultarlas por defecto perjudicaría mobile (sin hover real) sin una
+  ganancia de claridad que lo justifique — quedan visibles pero ya eran
+  `variant="ghost"` (terciarias), que es la jerarquía correcta.
+- `LeadsList` no se tocó: `TodayLead` no tiene un campo `status` real (la
+  query ya filtra por `status = 'new'`), así que un `StatusBadge` ahí
+  siempre diría "Nuevo" — no aporta información nueva.
+
+**Pantallas modificadas:** `/today` únicamente.
+
+**Responsive:** sin verificación adicional a 375px en este Bloque más allá
+de lo ya cubierto por UI-2 (el shell) — la grilla de `/today` ya era
+`md:grid-cols-2 xl:grid-cols-3` (colapsa a una columna en mobile) desde V2,
+sin cambios de esa lógica en UI-3.
+
+**Charts:** no aplica a esta pantalla.
+
+**Deuda pendiente / seguimiento:** ninguna nueva.
+
+**Verificación:** `npx next typegen`, `npm run typecheck`, `npm run lint`,
+`npm run build` y `npm run format` sin errores. Se sembraron datos de
+prueba reales (contacto, tarea vencida, tarea de hoy, actividad agendada,
+lead sin responder) en la organización de Agustín para verificar en vivo
+contra `localhost:3000`: colores de `StatusBadge` correctos (vencido en
+rojo, alta/warning en naranja, urgente en rojo), timeline de agenda con
+hora en negrita, y el flujo "Completar" probado de punta a punta (la tarea
+desaparece de la lista y el estado vacío "Sin tareas para hoy." se muestra
+correctamente). Los datos de prueba se borraron después de la verificación
+(5/5 registros confirmados eliminados).
